@@ -8,6 +8,7 @@ permissions:
 
 env:
   MPV_VERSION: 0.38.0
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -22,13 +23,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Package libmpv bundle
         run: ./scripts/package_libmpv.sh --arch "${{ matrix.arch }}" --output-dir "$RUNNER_TEMP/dist"
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: libmpv-${{ matrix.arch }}
           path: ${{ runner.temp }}/dist/*.tar.gz
@@ -42,25 +43,34 @@ jobs:
 
     steps:
       - name: Download packaged artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: libmpv-*
           merge-multiple: true
           path: dist
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          files: dist/*.tar.gz
-          fail_on_unmatched_files: true
-          generate_release_notes: true
-          body: |
-            Includes:
-            - IINA prebuilt macOS dylibs
-            - mpv ${{ env.MPV_VERSION }} headers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.ref_name }}"
+          notes_file="$RUNNER_TEMP/release-notes.txt"
 
-            Package layout:
-            - include/mpv/*.h
-            - lib/*.dylib
+          cat > "$notes_file" <<EOF
+          Includes:
+          - IINA prebuilt macOS dylibs
+          - mpv ${MPV_VERSION} headers
+
+          Package layout:
+          - include/mpv/*.h
+          - lib/*.dylib
+          EOF
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.tar.gz --clobber
+          else
+            gh release create "$tag" dist/*.tar.gz \
+              --title "$tag" \
+              --generate-notes \
+              --notes-file "$notes_file"
+          fi
