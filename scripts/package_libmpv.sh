@@ -88,12 +88,23 @@ curl -fsSL --retry 5 --retry-delay 2 \
 tar -xzf "$mpv_archive" -C "$stage_dir"
 mpv_source_dir="$(find "$stage_dir" -maxdepth 1 -mindepth 1 -type d -name 'mpv-*' | head -n 1)"
 
-if [[ -z "$mpv_source_dir" || ! -d "${mpv_source_dir}/include/mpv" ]]; then
-  echo "Failed to locate include/mpv in mpv source archive" >&2
+if [[ -z "$mpv_source_dir" ]]; then
+  echo "Failed to locate extracted mpv source directory" >&2
   exit 1
 fi
 
-cp -R "${mpv_source_dir}/include/mpv" "$include_dir/"
+header_source_dir=""
+if [[ -d "${mpv_source_dir}/include/mpv" ]]; then
+  header_source_dir="${mpv_source_dir}/include/mpv"
+elif [[ -d "${mpv_source_dir}/libmpv" ]]; then
+  header_source_dir="${mpv_source_dir}/libmpv"
+else
+  echo "Failed to locate mpv public headers in source archive" >&2
+  exit 1
+fi
+
+mkdir -p "${include_dir}/mpv"
+cp "${header_source_dir}"/*.h "${include_dir}/mpv/"
 
 tar -C "$stage_dir" -czf "$archive_path" "$package_name"
 

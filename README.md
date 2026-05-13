@@ -36,7 +36,7 @@ For each architecture (`arm64`, `x86_64`) the workflow:
 
 1. Downloads IINA dylibs from `https://iina.io/dylibs/...`
 2. Downloads the mpv `v0.38.0` source archive
-3. Copies `include/mpv/*.h`
+3. Copies public headers from the mpv source archive into `include/mpv/`
 4. Packs headers and dylibs into a `.tar.gz`
 5. Uploads both archives to the GitHub Release for that tag
 
