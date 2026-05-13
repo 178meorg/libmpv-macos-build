@@ -152,6 +152,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${{ github.ref_name }}"
+          repo="${{ github.repository }}"
           notes_file="$RUNNER_TEMP/release-notes.txt"
 
           cat > "$notes_file" <<EOF
@@ -164,10 +165,11 @@ jobs:
           - lib/*.dylib
           EOF
 
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/*.tar.gz --clobber
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.tar.gz --repo "$repo" --clobber
           else
             gh release create "$tag" dist/*.tar.gz \
+              --repo "$repo" \
               --title "$tag" \
               --generate-notes \
               --notes-file "$notes_file"
