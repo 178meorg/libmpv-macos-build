@@ -8,11 +8,13 @@ OUTPUT_DIR=""
 WORK_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
 MPV_VERSION="${MPV_VERSION:-0.38.0}"
 IINA_DYLIBS_VERSION="${IINA_DYLIBS_VERSION:-}"
+HEADERS_DIR=""
+LIBS_DIR=""
 
 usage() {
   cat <<'EOF'
 Usage:
-  package_libmpv.sh --arch <arm64|x86_64> --output-dir <dir> [--work-dir <dir>] [--mpv-version <version>] [--iina-dylibs-version <version>]
+  package_libmpv.sh --arch <arm64|x86_64> --output-dir <dir> [--headers-dir <dir>] [--libs-dir <dir>] [--work-dir <dir>] [--mpv-version <version>] [--iina-dylibs-version <version>]
 EOF
 }
 
@@ -24,6 +26,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --output-dir)
       OUTPUT_DIR="${2:-}"
+      shift 2
+      ;;
+    --headers-dir)
+      HEADERS_DIR="${2:-}"
+      shift 2
+      ;;
+    --libs-dir)
+      LIBS_DIR="${2:-}"
       shift 2
       ;;
     --work-dir)
@@ -75,36 +85,35 @@ archive_path="${OUTPUT_DIR%/}/${package_name}.tar.gz"
 
 mkdir -p "$lib_dir" "$include_dir"
 
-"${SCRIPT_DIR}/download_iina_libs.sh" \
-  --arch "$ARCH" \
-  --output-dir "$lib_dir" \
-  --iina-dylibs-version "$IINA_DYLIBS_VERSION"
+if [[ -z "$LIBS_DIR" ]]; then
+  LIBS_DIR="${stage_dir}/libs"
+  "${SCRIPT_DIR}/download_iina_libs.sh" \
+    --arch "$ARCH" \
+    --output-dir "$LIBS_DIR" \
+    --iina-dylibs-version "$IINA_DYLIBS_VERSION"
+fi
 
-mpv_archive="${stage_dir}/mpv-${MPV_VERSION}.tar.gz"
-curl -fsSL --retry 5 --retry-delay 2 \
-  "https://github.com/mpv-player/mpv/archive/refs/tags/v${MPV_VERSION}.tar.gz" \
-  -o "$mpv_archive"
+if [[ -z "$HEADERS_DIR" ]]; then
+  HEADERS_DIR="${stage_dir}/headers"
+  "${SCRIPT_DIR}/fetch_mpv_headers.sh" \
+    --output-dir "$HEADERS_DIR" \
+    --work-dir "$stage_dir" \
+    --mpv-version "$MPV_VERSION"
+fi
 
-tar -xzf "$mpv_archive" -C "$stage_dir"
-mpv_source_dir="$(find "$stage_dir" -maxdepth 1 -mindepth 1 -type d -name 'mpv-*' | head -n 1)"
-
-if [[ -z "$mpv_source_dir" ]]; then
-  echo "Failed to locate extracted mpv source directory" >&2
+if [[ ! -d "${HEADERS_DIR}/mpv" ]]; then
+  echo "Failed to locate mpv headers directory at ${HEADERS_DIR}/mpv" >&2
   exit 1
 fi
 
-header_source_dir=""
-if [[ -d "${mpv_source_dir}/include/mpv" ]]; then
-  header_source_dir="${mpv_source_dir}/include/mpv"
-elif [[ -d "${mpv_source_dir}/libmpv" ]]; then
-  header_source_dir="${mpv_source_dir}/libmpv"
-else
-  echo "Failed to locate mpv public headers in source archive" >&2
+if ! find "$LIBS_DIR" -maxdepth 1 -type f -name '*.dylib' | grep -q .; then
+  echo "Failed to locate dylibs in ${LIBS_DIR}" >&2
   exit 1
 fi
 
 mkdir -p "${include_dir}/mpv"
-cp "${header_source_dir}"/*.h "${include_dir}/mpv/"
+cp "${HEADERS_DIR}/mpv/"*.h "${include_dir}/mpv/"
+cp "${LIBS_DIR}/"*.dylib "$lib_dir/"
 
 tar -C "$stage_dir" -czf "$archive_path" "$package_name"
 

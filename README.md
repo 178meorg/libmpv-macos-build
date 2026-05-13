@@ -32,13 +32,22 @@ The GitHub Release name and version are both the pushed tag name.
 
 ## Workflow behavior
 
-For each architecture (`arm64`, `x86_64`) the workflow:
+The workflow is split into six visible stages:
 
-1. Downloads IINA dylibs from `https://iina.io/dylibs/...`
-2. Downloads the mpv `v0.38.0` source archive
-3. Copies public headers from the mpv source archive into `include/mpv/`
-4. Packs headers and dylibs into a `.tar.gz`
-5. Uploads both archives to the GitHub Release for that tag
+1. `Prepare mpv headers`
+2. `Download arm64 dylibs`
+3. `Download x86_64 dylibs`
+4. `Package arm64 bundle`
+5. `Package x86_64 bundle`
+6. `Publish GitHub Release` on tag pushes only
+
+Packaging jobs:
+
+1. Download mpv headers once as a shared artifact
+2. Download IINA dylibs separately for each architecture
+3. Reuse headers and dylib artifacts when assembling the final bundles
+4. Pack headers and dylibs into a `.tar.gz`
+5. Upload branch artifacts or release assets
 
 ## Configurable variables
 
@@ -53,6 +62,9 @@ Workflow defaults:
 
 ```bash
 chmod +x scripts/*.sh
-./scripts/package_libmpv.sh --arch arm64 --output-dir ./dist
-./scripts/package_libmpv.sh --arch x86_64 --output-dir ./dist
+./scripts/fetch_mpv_headers.sh --output-dir ./dist/headers
+./scripts/download_iina_libs.sh --arch arm64 --output-dir ./dist/arm64-libs
+./scripts/download_iina_libs.sh --arch x86_64 --output-dir ./dist/x86_64-libs
+./scripts/package_libmpv.sh --arch arm64 --headers-dir ./dist/headers --libs-dir ./dist/arm64-libs --output-dir ./dist
+./scripts/package_libmpv.sh --arch x86_64 --headers-dir ./dist/headers --libs-dir ./dist/x86_64-libs --output-dir ./dist
 ```
