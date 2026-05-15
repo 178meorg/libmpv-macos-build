@@ -2,20 +2,35 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCH=""
 OUTPUT_DIR=""
 WORK_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
-MPV_VERSION="${MPV_VERSION:-0.38.0}"
-IINA_DYLIBS_VERSION="${IINA_DYLIBS_VERSION:-}"
-HEADERS_DIR=""
-LIBS_DIR=""
+MPV_VERSION="${MPV_VERSION:-}"
+INSTALL_PREFIX=""
+SOURCE_DIR=""
 
 usage() {
   cat <<'EOF'
 Usage:
-  package_libmpv.sh --arch <arm64|x86_64> --output-dir <dir> [--headers-dir <dir>] [--libs-dir <dir>] [--work-dir <dir>] [--mpv-version <version>] [--iina-dylibs-version <version>]
+  package_libmpv.sh --arch <arm64|x86_64> --install-prefix <dir> --output-dir <dir> [--source-dir <dir>] [--work-dir <dir>] [--version <version>]
 EOF
+}
+
+detect_version() {
+  local source_dir="$1"
+  local version=""
+  local version_file=""
+
+  version_file="$(find "$source_dir" -path '*/common/version.h' -type f | head -n 1)"
+  if [[ -n "$version_file" ]]; then
+    version="$(grep VERSION "$version_file" | cut -d'"' -f2)"
+  fi
+
+  if [[ -z "$version" && -f "${source_dir}/MPV_VERSION" ]]; then
+    version="$(tr -d '\r\n' < "${source_dir}/MPV_VERSION")"
+  fi
+
+  printf '%s' "$version"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -28,24 +43,20 @@ while [[ $# -gt 0 ]]; do
       OUTPUT_DIR="${2:-}"
       shift 2
       ;;
-    --headers-dir)
-      HEADERS_DIR="${2:-}"
-      shift 2
-      ;;
-    --libs-dir)
-      LIBS_DIR="${2:-}"
+    --install-prefix)
+      INSTALL_PREFIX="${2:-}"
       shift 2
       ;;
     --work-dir)
       WORK_DIR="${2:-}"
       shift 2
       ;;
-    --mpv-version)
-      MPV_VERSION="${2:-}"
+    --source-dir)
+      SOURCE_DIR="${2:-}"
       shift 2
       ;;
-    --iina-dylibs-version)
-      IINA_DYLIBS_VERSION="${2:-}"
+    --version)
+      MPV_VERSION="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -74,6 +85,20 @@ if [[ -z "$OUTPUT_DIR" ]]; then
   exit 1
 fi
 
+if [[ -z "$INSTALL_PREFIX" ]]; then
+  echo "--install-prefix is required" >&2
+  exit 1
+fi
+
+if [[ -z "$MPV_VERSION" && -n "$SOURCE_DIR" ]]; then
+  MPV_VERSION="$(detect_version "$SOURCE_DIR")"
+fi
+
+if [[ -z "$MPV_VERSION" ]]; then
+  echo "Unable to determine mpv version, pass --version or --source-dir" >&2
+  exit 1
+fi
+
 mkdir -p "$OUTPUT_DIR" "$WORK_DIR"
 
 stage_dir="$(mktemp -d "${WORK_DIR%/}/libmpv-${ARCH}.XXXXXX")"
@@ -85,35 +110,28 @@ archive_path="${OUTPUT_DIR%/}/${package_name}.tar.gz"
 
 mkdir -p "$lib_dir" "$include_dir"
 
-if [[ -z "$LIBS_DIR" ]]; then
-  LIBS_DIR="${stage_dir}/libs"
-  "${SCRIPT_DIR}/download_iina_libs.sh" \
-    --arch "$ARCH" \
-    --output-dir "$LIBS_DIR" \
-    --iina-dylibs-version "$IINA_DYLIBS_VERSION"
-fi
-
-if [[ -z "$HEADERS_DIR" ]]; then
-  HEADERS_DIR="${stage_dir}/headers"
-  "${SCRIPT_DIR}/fetch_mpv_headers.sh" \
-    --output-dir "$HEADERS_DIR" \
-    --work-dir "$stage_dir" \
-    --mpv-version "$MPV_VERSION"
-fi
-
-if [[ ! -d "${HEADERS_DIR}/mpv" ]]; then
-  echo "Failed to locate mpv headers directory at ${HEADERS_DIR}/mpv" >&2
+if [[ ! -d "${INSTALL_PREFIX}/include/mpv" ]]; then
+  echo "Failed to locate mpv headers directory at ${INSTALL_PREFIX}/include/mpv" >&2
   exit 1
 fi
 
-if ! find "$LIBS_DIR" -maxdepth 1 -type f -name '*.dylib' | grep -q .; then
-  echo "Failed to locate dylibs in ${LIBS_DIR}" >&2
+shopt -s nullglob
+dylibs=("${INSTALL_PREFIX}/lib"/libmpv*.dylib)
+shopt -u nullglob
+
+if [[ "${#dylibs[@]}" -eq 0 ]]; then
+  echo "Failed to locate libmpv dylibs in ${INSTALL_PREFIX}/lib" >&2
   exit 1
 fi
 
 mkdir -p "${include_dir}/mpv"
-cp "${HEADERS_DIR}/mpv/"*.h "${include_dir}/mpv/"
-cp "${LIBS_DIR}/"*.dylib "$lib_dir/"
+cp "${INSTALL_PREFIX}/include/mpv/"*.h "${include_dir}/mpv/"
+cp -P "${dylibs[@]}" "$lib_dir/"
+
+if [[ -f "${INSTALL_PREFIX}/lib/pkgconfig/mpv.pc" ]]; then
+  mkdir -p "${lib_dir}/pkgconfig"
+  cp "${INSTALL_PREFIX}/lib/pkgconfig/mpv.pc" "${lib_dir}/pkgconfig/"
+fi
 
 tar -C "$stage_dir" -czf "$archive_path" "$package_name"
 

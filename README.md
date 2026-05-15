@@ -1,70 +1,94 @@
-# libmpv macOS Release Workflow
+# macOS mpv Build Workflow
 
-This repository packages macOS `libmpv` release bundles from two inputs:
+This repository now builds macOS `mpv` directly from upstream `mpv-player/mpv` using the official macOS CI steps from upstream `.github/workflows/build.yml` and `ci/build-macos.sh`.
 
-- IINA prebuilt dylibs
-- mpv `0.38.0` source headers
+Each run builds two architectures:
 
-Each GitHub Release publishes two archives:
+- `arm64` on `macos-15`
+- `x86_64` on `macos-15-intel`
 
-- `libmpv-0.38.0-macos-arm64.tar.gz`
-- `libmpv-0.38.0-macos-x86_64.tar.gz`
+Each build produces two archives:
 
-After extraction, each archive has this layout:
+- `mpv-<version>-macos-<arch>.tar.gz`
+- `libmpv-<version>-macos-<arch>.tar.gz`
+
+The `mpv` archive contains `mpv.app`.
+
+The `libmpv` archive has this layout:
 
 ```text
-libmpv-0.38.0-macos-<arch>/
+libmpv-<version>-macos-<arch>/
   include/
     mpv/
       *.h
   lib/
-    *.dylib
+    libmpv*.dylib
+    pkgconfig/
+      mpv.pc
 ```
 
 ## Trigger behavior
 
-Any `push` triggers `.github/workflows/release.yml`.
+`.github/workflows/build.yml` runs on:
 
-- Branch push: build both archives and upload them as GitHub Actions artifacts
-- Tag push: build both archives, upload artifacts, and publish a GitHub Release
+- any `push`
+- manual `workflow_dispatch`
 
-The GitHub Release name and version are both the pushed tag name.
+Branch pushes upload build artifacts to GitHub Actions.
+
+Tag pushes:
+
+- use the pushed tag name as the upstream mpv ref
+- upload build artifacts
+- publish a GitHub Release in this repository
+
+The tag must match a valid upstream `mpv-player/mpv` ref such as `v0.41.0`.
 
 ## Workflow behavior
 
-The workflow is split into six visible stages:
+Each matrix job:
 
-1. `Prepare mpv headers`
-2. `Download arm64 dylibs`
-3. `Download x86_64 dylibs`
-4. `Package arm64 bundle`
-5. `Package x86_64 bundle`
-6. `Publish GitHub Release` on tag pushes only
+1. checks out this packaging repository
+2. checks out upstream `mpv-player/mpv`
+3. installs the same Homebrew dependencies as upstream macOS CI
+4. runs upstream `./ci/build-macos.sh`
+5. runs `meson test -C build`
+6. packages `mpv.app`
+7. packages `libmpv` from `$HOME/out/mpv`
 
-Packaging jobs:
-
-1. Download mpv headers once as a shared artifact
-2. Download IINA dylibs separately for each architecture
-3. Reuse headers and dylib artifacts when assembling the final bundles
-4. Pack headers and dylibs into a `.tar.gz`
-5. Upload branch artifacts or release assets
+The release job downloads both architecture artifacts and uploads all generated `.tar.gz` files to the GitHub Release.
 
 ## Configurable variables
 
 Workflow defaults:
 
-- `MPV_VERSION=0.38.0`
-- `IINA_DYLIBS_VERSION=""`
+- `MPV_DEFAULT_REF=master`
+- `MPV_REPOSITORY=mpv-player/mpv`
 
-`IINA_DYLIBS_VERSION` is optional. Leave it empty for the current IINA dylib path, or set it if you need an older versioned path such as `1.2.0`.
+Manual runs can override the upstream ref with the `mpv_ref` input.
 
 ## Local usage
 
+Install the same dependencies used by upstream CI, clone upstream `mpv`, and run the official build script:
+
 ```bash
-chmod +x scripts/*.sh
-./scripts/fetch_mpv_headers.sh --output-dir ./dist/headers
-./scripts/download_iina_libs.sh --arch arm64 --output-dir ./dist/arm64-libs
-./scripts/download_iina_libs.sh --arch x86_64 --output-dir ./dist/x86_64-libs
-./scripts/package_libmpv.sh --arch arm64 --headers-dir ./dist/headers --libs-dir ./dist/arm64-libs --output-dir ./dist
-./scripts/package_libmpv.sh --arch x86_64 --headers-dir ./dist/headers --libs-dir ./dist/x86_64-libs --output-dir ./dist
+brew update
+brew install autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
+  luajit libass ffmpeg-full meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
+  libarchive libbluray libcaca libcdio-paranoia libdvdnav rubberband zimg
+
+git clone https://github.com/mpv-player/mpv.git
+cd mpv
+TRAVIS_OS_NAME=local ./ci/build-macos.sh
+meson compile -C build macos-bundle
+```
+
+To package `libmpv` from the official install prefix:
+
+```bash
+/path/to/this/repo/scripts/package_libmpv.sh \
+  --arch arm64 \
+  --install-prefix "$HOME/out/mpv" \
+  --source-dir /path/to/mpv \
+  --output-dir ./dist
 ```

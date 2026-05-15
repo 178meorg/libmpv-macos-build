@@ -1,0 +1,206 @@
+name: Build macOS mpv with upstream CI
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      mpv_ref:
+        description: Upstream mpv ref to build
+        required: false
+        default: master
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MPV_DEFAULT_REF: master
+  MPV_REPOSITORY: mpv-player/mpv
+
+jobs:
+  build-macos:
+    name: Build macOS ${{ matrix.artifact_suffix }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            artifact_suffix: arm64
+            swift: ""
+            target: ""
+          - os: macos-15-intel
+            artifact_suffix: x86_64
+            swift: ""
+            target: ""
+
+    steps:
+      - name: Checkout packaging repository
+        uses: actions/checkout@v6
+
+      - name: Resolve upstream ref
+        id: upstream
+        shell: bash
+        env:
+          MANUAL_REF: ${{ github.event.inputs.mpv_ref }}
+        run: |
+          ref="${MPV_DEFAULT_REF}"
+
+          if [[ -n "$MANUAL_REF" ]]; then
+            ref="$MANUAL_REF"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            ref="${GITHUB_REF_NAME}"
+          fi
+
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout upstream mpv
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ env.MPV_REPOSITORY }}
+          ref: ${{ steps.upstream.outputs.ref }}
+          path: mpv
+          fetch-depth: 1
+
+      - name: Remove stray upstream python binary symlinks under /usr/local
+        shell: bash
+        run: |
+          find /usr/local/bin -lname '*/Library/Frameworks/Python.framework/*' -delete -print
+          brew unlink python && brew link --overwrite python
+
+      - name: Unlink pkg-config if the CI runner happens to have it already installed
+        shell: bash
+        run: |
+          find "$(brew config | grep HOMEBREW_PREFIX | cut -f 2- -d ' ')/bin" -lname '*/pkg-config@0*/*' -print -exec brew unlink pkg-config@0.29.2 \; -quit
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          brew update
+          if brew list ffmpeg &>/dev/null; then brew unlink ffmpeg; fi
+          brew install -q autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
+            luajit libass ffmpeg-full meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
+            libarchive libbluray libcaca libcdio-paranoia libdvdnav rubberband zimg
+          brew link ffmpeg-full
+
+      - name: Build with official macOS CI script
+        id: build
+        working-directory: mpv
+        shell: bash
+        env:
+          TRAVIS_OS_NAME: ${{ matrix.os }}
+          SWIFT_FLAGS: ${{ matrix.swift }}
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
+        run: |
+          rm -rf "$HOME/out/mpv"
+          ./ci/build-macos.sh
+
+      - name: Print meson log
+        if: ${{ failure() && steps.build.outcome == 'failure' }}
+        working-directory: mpv
+        shell: bash
+        run: |
+          cat ./build/meson-logs/meson-log.txt
+
+      - name: Run meson tests
+        id: tests
+        working-directory: mpv
+        shell: bash
+        run: |
+          meson test -C build
+
+      - name: Print meson test log
+        if: ${{ failure() && steps.tests.outcome == 'failure' }}
+        working-directory: mpv
+        shell: bash
+        run: |
+          cat ./build/meson-logs/testlog.txt
+
+      - name: Detect mpv version
+        id: version
+        shell: bash
+        run: |
+          version_file="$(find mpv -path '*/common/version.h' -type f | head -n 1)"
+
+          if [[ -z "$version_file" ]]; then
+            echo "Failed to locate common/version.h" >&2
+            exit 1
+          fi
+
+          version="$(grep VERSION "$version_file" | cut -d'"' -f2)"
+
+          if [[ -z "$version" ]]; then
+            echo "Failed to parse version from $version_file" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Package mpv app
+        working-directory: mpv
+        shell: bash
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          meson compile -C build macos-bundle
+          tar -czf "$GITHUB_WORKSPACE/dist/mpv-${{ steps.version.outputs.version }}-macos-${{ matrix.artifact_suffix }}.tar.gz" -C build mpv.app
+
+      - name: Package libmpv bundle
+        shell: bash
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          ./scripts/package_libmpv.sh \
+            --arch "${{ matrix.artifact_suffix }}" \
+            --install-prefix "$HOME/out/mpv" \
+            --source-dir "$GITHUB_WORKSPACE/mpv" \
+            --version "${{ steps.version.outputs.version }}" \
+            --output-dir "$GITHUB_WORKSPACE/dist"
+
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.artifact_suffix }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-macos
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download packaged artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          repo="${GITHUB_REPOSITORY}"
+          notes_file="$RUNNER_TEMP/release-notes.txt"
+
+          cat > "$notes_file" <<EOF
+          Built from upstream ${MPV_REPOSITORY}@${tag} using the official macOS CI dependency and build steps.
+
+          Included artifacts:
+          - mpv.app bundles for arm64 and x86_64
+          - libmpv headers and dylibs packaged from the official install prefix
+          EOF
+
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/*.tar.gz --repo "$repo" --clobber
+          else
+            gh release create "$tag" dist/*.tar.gz \
+              --repo "$repo" \
+              --title "$tag" \
+              --generate-notes \
+              --notes-file "$notes_file"
+          fi
