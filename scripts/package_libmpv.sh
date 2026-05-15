@@ -11,6 +11,7 @@ MPV_VERSION="${MPV_VERSION:-}"
 INSTALL_PREFIX=""
 SOURCE_DIR=""
 ALLOWED_DYLIBS=()
+ALLOWED_DYLIB_KEYS=()
 
 usage() {
   cat <<'EOF'
@@ -28,12 +29,36 @@ load_allowed_dylibs() {
   while IFS= read -r line; do
     [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
     ALLOWED_DYLIBS+=("$line")
+    ALLOWED_DYLIB_KEYS+=("$(canonical_dylib_name "$line")")
   done < "$ALLOWLIST_FILE"
 
   if [[ "${#ALLOWED_DYLIBS[@]}" -eq 0 ]]; then
     echo "No dylibs configured in ${ALLOWLIST_FILE}" >&2
     exit 1
   fi
+}
+
+canonical_dylib_name() {
+  local name="${1##*/}"
+  name="${name%.dylib}"
+
+  while [[ "$name" == *.[0-9] ]]; do
+    name="${name%.[0-9]}"
+  done
+
+  while [[ "$name" == *.[0-9][0-9] ]]; do
+    name="${name%.[0-9][0-9]}"
+  done
+
+  while [[ "$name" == *.[0-9][0-9][0-9] ]]; do
+    name="${name%.[0-9][0-9][0-9]}"
+  done
+
+  while [[ "$name" == *.[0-9][0-9][0-9][0-9] ]]; do
+    name="${name%.[0-9][0-9][0-9][0-9]}"
+  done
+
+  printf '%s\n' "$name"
 }
 
 is_system_dependency() {
@@ -63,12 +88,13 @@ array_contains() {
 
 is_allowed_dylib() {
   local name="$1"
+  local key="$(canonical_dylib_name "$name")"
 
-  if [[ "$name" == "libmpv.dylib" ]]; then
+  if [[ "$key" == "libmpv" ]]; then
     return 0
   fi
 
-  array_contains "$name" "${ALLOWED_DYLIBS[@]}"
+  array_contains "$key" "${ALLOWED_DYLIB_KEYS[@]}"
 }
 
 resolve_dependency_source() {

@@ -33,7 +33,7 @@ libmpv-<version>-macos-<arch>/
 
 The `lib/` directory also includes the non-system dylib dependencies needed by `libmpv.dylib`, with their install names rewritten to `@loader_path/<name>`.
 
-The dependency set is restricted to the IINA dylib allowlist in [scripts/libmpv-dylibs-iina.txt](/home/ice/workspace/libmpv-macos-build/scripts/libmpv-dylibs-iina.txt:1). If upstream mpv starts requiring an extra non-system dylib, packaging fails until the allowlist is updated.
+The dependency set is restricted to the IINA dylib allowlist in [scripts/libmpv-dylibs-iina.txt](/home/ice/workspace/libmpv-macos-build/scripts/libmpv-dylibs-iina.txt:1). Matching ignores trailing version suffixes such as `.61` or `.62`. If upstream mpv starts requiring a new non-system library family, packaging fails until the allowlist is updated.
 
 ## Trigger behavior
 

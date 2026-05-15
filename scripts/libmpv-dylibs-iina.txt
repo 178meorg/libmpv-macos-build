@@ -1,3 +1,4 @@
+# Match by library name and ignore trailing version suffixes.
 libarchive.13.dylib
 libass.9.dylib
 libavcodec.61.dylib
