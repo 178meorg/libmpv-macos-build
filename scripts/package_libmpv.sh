@@ -88,7 +88,7 @@ collect_dylib_closure() {
     local source="${queue[$index]}"
     index=$((index + 1))
 
-    if array_contains "$source" "${processed[@]}"; then
+    if [[ "${#processed[@]}" -gt 0 ]] && array_contains "$source" "${processed[@]}"; then
       continue
     fi
 
