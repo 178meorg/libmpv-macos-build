@@ -97,6 +97,12 @@ jobs:
           rm -rf "$HOME/out/mpv"
           ./ci/build-macos.sh
 
+      - name: Verify libmpv output
+        shell: bash
+        run: |
+          ls -l "$HOME/out/mpv/lib"
+          test -e "$HOME/out/mpv/lib/libmpv.dylib"
+
       - name: Print meson log
         if: ${{ failure() && steps.build.outcome == 'failure' }}
         working-directory: mpv
@@ -157,11 +163,20 @@ jobs:
             --version "${{ steps.version.outputs.version }}" \
             --output-dir "$GITHUB_WORKSPACE/dist"
 
+      - name: Export raw libmpv dylib
+        shell: bash
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/dist/raw-${{ matrix.artifact_suffix }}"
+          cp -L "$HOME/out/mpv/lib/libmpv.dylib" \
+            "$GITHUB_WORKSPACE/dist/raw-${{ matrix.artifact_suffix }}/libmpv-${{ steps.version.outputs.version }}-macos-${{ matrix.artifact_suffix }}.dylib"
+
       - name: Upload packaged artifacts
         uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.artifact_suffix }}
-          path: dist/*.tar.gz
+          path: |
+            dist/*.tar.gz
+            dist/raw-${{ matrix.artifact_suffix }}/*.dylib
           if-no-files-found: error
 
   release:
@@ -192,7 +207,8 @@ jobs:
 
           Included artifacts:
           - mpv.app bundles for arm64 and x86_64
-          - libmpv headers and dylibs packaged from the official install prefix
+          - raw libmpv.dylib files for arm64 and x86_64
+          - libmpv headers plus non-system dylib dependencies packaged from the official install prefix
           EOF
 
           if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then

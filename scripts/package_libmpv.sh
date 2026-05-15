@@ -16,6 +16,135 @@ Usage:
 EOF
 }
 
+is_system_dependency() {
+  case "$1" in
+    /usr/lib/*|/System/Library/*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+array_contains() {
+  local needle="$1"
+  shift
+
+  local item
+  for item in "$@"; do
+    if [[ "$item" == "$needle" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+resolve_dependency_source() {
+  local dep="$1"
+  local dep_base="${dep##*/}"
+  local candidate=""
+
+  if [[ "$dep" == @* ]]; then
+    if [[ -e "${INSTALL_PREFIX}/lib/${dep_base}" ]]; then
+      printf '%s\n' "${INSTALL_PREFIX}/lib/${dep_base}"
+      return 0
+    fi
+
+    candidate="$(find "${INSTALL_PREFIX}/lib" -maxdepth 1 \( -type f -o -type l \) -name "$dep_base" | head -n 1)"
+    if [[ -n "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  fi
+
+  if [[ -e "$dep" ]]; then
+    printf '%s\n' "$dep"
+    return 0
+  fi
+
+  if [[ -e "${INSTALL_PREFIX}/lib/${dep_base}" ]]; then
+    printf '%s\n' "${INSTALL_PREFIX}/lib/${dep_base}"
+    return 0
+  fi
+
+  candidate="$(find "${INSTALL_PREFIX}/lib" -maxdepth 1 \( -type f -o -type l \) -name "$dep_base" | head -n 1)"
+  if [[ -n "$candidate" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  return 1
+}
+
+collect_dylib_closure() {
+  local root="$1"
+  local queue=("$root")
+  local processed=()
+  local index=0
+
+  while [[ "$index" -lt "${#queue[@]}" ]]; do
+    local source="${queue[$index]}"
+    index=$((index + 1))
+
+    if array_contains "$source" "${processed[@]}"; then
+      continue
+    fi
+
+    processed+=("$source")
+
+    local dest="${lib_dir}/$(basename "$source")"
+    if [[ -e "$dest" ]]; then
+      if ! cmp -s "$source" "$dest"; then
+        echo "Dependency basename collision at ${dest}" >&2
+        exit 1
+      fi
+    else
+      cp -L "$source" "$dest"
+    fi
+
+    while IFS= read -r dep; do
+      [[ -z "$dep" ]] && continue
+
+      if is_system_dependency "$dep"; then
+        continue
+      fi
+
+      if resolved="$(resolve_dependency_source "$dep")"; then
+        if ! array_contains "$resolved" "${processed[@]}" && ! array_contains "$resolved" "${queue[@]}"; then
+          queue+=("$resolved")
+        fi
+      else
+        echo "Warning: unable to resolve dependency ${dep} referenced by ${source}" >&2
+      fi
+    done < <(otool -L "$source" | tail -n +2 | awk '{print $1}')
+  done
+
+  local source dest base dep resolved dep_base
+  for source in "${processed[@]}"; do
+    base="$(basename "$source")"
+    dest="${lib_dir}/${base}"
+
+    install_name_tool -id "@loader_path/${base}" "$dest"
+
+    while IFS= read -r dep; do
+      [[ -z "$dep" ]] && continue
+
+      if is_system_dependency "$dep"; then
+        continue
+      fi
+
+      if ! resolved="$(resolve_dependency_source "$dep")"; then
+        continue
+      fi
+
+      dep_base="$(basename "$resolved")"
+      install_name_tool -change "$dep" "@loader_path/${dep_base}" "$dest"
+    done < <(otool -L "$source" | tail -n +2 | awk '{print $1}')
+  done
+}
+
 detect_version() {
   local source_dir="$1"
   local version=""
@@ -124,9 +253,15 @@ if [[ "${#dylibs[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+if [[ ! -e "${INSTALL_PREFIX}/lib/libmpv.dylib" ]]; then
+  echo "Failed to locate ${INSTALL_PREFIX}/lib/libmpv.dylib" >&2
+  exit 1
+fi
+
 mkdir -p "${include_dir}/mpv"
 cp "${INSTALL_PREFIX}/include/mpv/"*.h "${include_dir}/mpv/"
-cp -P "${dylibs[@]}" "$lib_dir/"
+
+collect_dylib_closure "${INSTALL_PREFIX}/lib/libmpv.dylib"
 
 if [[ -f "${INSTALL_PREFIX}/lib/pkgconfig/mpv.pc" ]]; then
   mkdir -p "${lib_dir}/pkgconfig"

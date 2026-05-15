@@ -11,8 +11,11 @@ Each build produces two archives:
 
 - `mpv-<version>-macos-<arch>.tar.gz`
 - `libmpv-<version>-macos-<arch>.tar.gz`
+- `libmpv-<version>-macos-<arch>.dylib`
 
 The `mpv` archive contains `mpv.app`.
+
+The standalone `.dylib` artifact is the raw `libmpv.dylib` copied from the official install prefix.
 
 The `libmpv` archive has this layout:
 
@@ -22,10 +25,13 @@ libmpv-<version>-macos-<arch>/
     mpv/
       *.h
   lib/
-    libmpv*.dylib
+    libmpv.dylib
+    *.dylib
     pkgconfig/
       mpv.pc
 ```
+
+The `lib/` directory also includes the non-system dylib dependencies needed by `libmpv.dylib`, with their install names rewritten to `@loader_path/<name>`.
 
 ## Trigger behavior
 
@@ -54,7 +60,8 @@ Each matrix job:
 4. runs upstream `./ci/build-macos.sh`
 5. runs `meson test -C build`
 6. packages `mpv.app`
-7. packages `libmpv` from `$HOME/out/mpv`
+7. exports raw `libmpv.dylib` from `$HOME/out/mpv/lib`
+8. packages `libmpv` from `$HOME/out/mpv`
 
 The release job downloads both architecture artifacts and uploads all generated `.tar.gz` files to the GitHub Release.
 
