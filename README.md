@@ -1,6 +1,6 @@
 # macOS mpv Build Workflow
 
-This repository now builds macOS `mpv` directly from upstream `mpv-player/mpv` using the official macOS CI steps from upstream `.github/workflows/build.yml` and `ci/build-macos.sh`.
+This repository now builds macOS `mpv` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a small build-flag override to keep the dylib set aligned with IINA.
 
 Each run builds two architectures:
 
@@ -59,13 +59,15 @@ Each matrix job:
 1. checks out this packaging repository
 2. checks out upstream `mpv-player/mpv`
 3. installs the same Homebrew dependencies as upstream macOS CI
-4. runs upstream `./ci/build-macos.sh`
+4. runs a macOS CI-compatible build script based on upstream `ci/build-macos.sh`
 5. runs `meson test -C build`
 6. packages `mpv.app`
 7. exports raw `libmpv.dylib` from `$HOME/out/mpv/lib`
 8. packages `libmpv` from `$HOME/out/mpv`
 
 The release job downloads both architecture artifacts and uploads all generated `.tar.gz` files to the GitHub Release.
+
+To stay compatible with the IINA dylib allowlist, the build disables `cdda` and `caca`, which would otherwise introduce extra library families such as `libcdio_paranoia`.
 
 ## Configurable variables
 

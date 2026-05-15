@@ -85,9 +85,8 @@ jobs:
             libarchive libbluray libcaca libcdio-paranoia libdvdnav rubberband zimg
           brew link ffmpeg-full
 
-      - name: Build with official macOS CI script
+      - name: Build with macOS CI-compatible script
         id: build
-        working-directory: mpv
         shell: bash
         env:
           TRAVIS_OS_NAME: ${{ matrix.os }}
@@ -95,7 +94,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
         run: |
           rm -rf "$HOME/out/mpv"
-          ./ci/build-macos.sh
+          ./scripts/build_macos_iina_compatible.sh "$GITHUB_WORKSPACE/mpv"
 
       - name: Verify libmpv output
         shell: bash
