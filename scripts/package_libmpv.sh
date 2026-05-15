@@ -2,18 +2,38 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ALLOWLIST_FILE="${SCRIPT_DIR}/libmpv-dylibs-iina.txt"
 ARCH=""
 OUTPUT_DIR=""
 WORK_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
 MPV_VERSION="${MPV_VERSION:-}"
 INSTALL_PREFIX=""
 SOURCE_DIR=""
+ALLOWED_DYLIBS=()
 
 usage() {
   cat <<'EOF'
 Usage:
   package_libmpv.sh --arch <arm64|x86_64> --install-prefix <dir> --output-dir <dir> [--source-dir <dir>] [--work-dir <dir>] [--version <version>]
 EOF
+}
+
+load_allowed_dylibs() {
+  if [[ ! -f "$ALLOWLIST_FILE" ]]; then
+    echo "Failed to locate allowlist file at ${ALLOWLIST_FILE}" >&2
+    exit 1
+  fi
+
+  while IFS= read -r line; do
+    [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
+    ALLOWED_DYLIBS+=("$line")
+  done < "$ALLOWLIST_FILE"
+
+  if [[ "${#ALLOWED_DYLIBS[@]}" -eq 0 ]]; then
+    echo "No dylibs configured in ${ALLOWLIST_FILE}" >&2
+    exit 1
+  fi
 }
 
 is_system_dependency() {
@@ -39,6 +59,16 @@ array_contains() {
   done
 
   return 1
+}
+
+is_allowed_dylib() {
+  local name="$1"
+
+  if [[ "$name" == "libmpv.dylib" ]]; then
+    return 0
+  fi
+
+  array_contains "$name" "${ALLOWED_DYLIBS[@]}"
 }
 
 resolve_dependency_source() {
@@ -112,6 +142,12 @@ collect_dylib_closure() {
       fi
 
       if resolved="$(resolve_dependency_source "$dep")"; then
+        local resolved_base="$(basename "$resolved")"
+        if ! is_allowed_dylib "$resolved_base"; then
+          echo "Dependency ${resolved_base} referenced by ${source} is not in ${ALLOWLIST_FILE}" >&2
+          exit 1
+        fi
+
         if ! array_contains "$resolved" "${processed[@]}" && ! array_contains "$resolved" "${queue[@]}"; then
           queue+=("$resolved")
         fi
@@ -228,6 +264,8 @@ if [[ -z "$MPV_VERSION" ]]; then
   exit 1
 fi
 
+load_allowed_dylibs
+
 mkdir -p "$OUTPUT_DIR" "$WORK_DIR"
 
 stage_dir="$(mktemp -d "${WORK_DIR%/}/libmpv-${ARCH}.XXXXXX")"
@@ -241,15 +279,6 @@ mkdir -p "$lib_dir" "$include_dir"
 
 if [[ ! -d "${INSTALL_PREFIX}/include/mpv" ]]; then
   echo "Failed to locate mpv headers directory at ${INSTALL_PREFIX}/include/mpv" >&2
-  exit 1
-fi
-
-shopt -s nullglob
-dylibs=("${INSTALL_PREFIX}/lib"/libmpv*.dylib)
-shopt -u nullglob
-
-if [[ "${#dylibs[@]}" -eq 0 ]]; then
-  echo "Failed to locate libmpv dylibs in ${INSTALL_PREFIX}/lib" >&2
   exit 1
 fi
 
