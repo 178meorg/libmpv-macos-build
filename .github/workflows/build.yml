@@ -94,7 +94,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
         run: |
           rm -rf "$HOME/out/mpv"
-          ./scripts/build_macos_iina_compatible.sh "$GITHUB_WORKSPACE/mpv"
+          bash ./scripts/build_macos_iina_compatible.sh "$GITHUB_WORKSPACE/mpv"
 
       - name: Verify libmpv output
         shell: bash
