@@ -85,7 +85,7 @@ Install the same dependencies used by upstream CI, clone upstream `mpv`, and run
 brew update
 brew install autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
   luajit libass ffmpeg meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
-  libarchive libbluray libcaca libcdio-paranoia libdvdnav rubberband zimg
+  libarchive libcaca rubberband zimg
 
 git clone https://github.com/mpv-player/mpv.git
 cd mpv

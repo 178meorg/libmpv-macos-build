@@ -81,7 +81,7 @@ jobs:
           brew update
           brew install -q autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
             luajit libass ffmpeg meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
-            libarchive libbluray libcaca libcdio-paranoia libdvdnav rubberband zimg
+            libarchive libcaca rubberband zimg
 
       - name: Build with macOS CI-compatible script
         id: build

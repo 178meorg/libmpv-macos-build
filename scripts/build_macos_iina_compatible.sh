@@ -33,15 +33,37 @@ if [[ -d "./build/${MPV_VARIANT}" ]]; then
   rm -rf "./build/${MPV_VARIANT}"
 fi
 
-PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig/" CC="${CC:-cc}" CXX="${CXX:-c++}" \
-meson setup build $common_args \
-  -Dprefix="${MPV_INSTALL_PREFIX}" \
-  -Dobjc_args="-Wno-error=deprecated -Wno-error=deprecated-declarations" \
-  -D{dvdnav,gl,iconv,lcms2,libarchive,libbluray,lua,jpeg}=enabled \
-  -D{plain-gl,rubberband,zimg,zlib}=enabled \
-  -D{cocoa,coreaudio,gl-cocoa,videotoolbox-gl,videotoolbox-pl}=enabled \
-  -D{swift-build,macos-cocoa-cb,macos-media-player,macos-touchbar,vulkan}=enabled \
+meson_args=(
+  -Dprefix="${MPV_INSTALL_PREFIX}"
+  -Dobjc_args="-Wno-error=deprecated -Wno-error=deprecated-declarations"
+  -Dgl=enabled
+  -Diconv=enabled
+  -Dlcms2=enabled
+  -Dlibarchive=enabled
+  -Dlua=enabled
+  -Djpeg=enabled
+  -Dplain-gl=enabled
+  -Drubberband=enabled
+  -Dzimg=enabled
+  -Dzlib=enabled
+  -Dcocoa=enabled
+  -Dcoreaudio=enabled
+  -Dgl-cocoa=enabled
+  -Dvideotoolbox-gl=enabled
+  -Dvideotoolbox-pl=enabled
+  -Dswift-build=enabled
+  -Dmacos-cocoa-cb=enabled
+  -Dmacos-media-player=enabled
+  -Dmacos-touchbar=enabled
+  -Dvulkan=enabled
+  -Dcdda=disabled
+  -Ddvdnav=disabled
+  -Dlibbluray=disabled
   -Dswift-flags="${SWIFT_FLAGS:-}"
+)
+
+PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig/" CC="${CC:-cc}" CXX="${CXX:-c++}" \
+  meson setup build $common_args "${meson_args[@]}"
 
 meson compile -C build -j4
 meson install -C build
