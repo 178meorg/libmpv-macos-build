@@ -68,6 +68,20 @@ array_contains() {
   return 1
 }
 
+array_contains_var() {
+  local needle="$1"
+  local array_name="$2"
+  local length=0
+
+  eval "length=\${#${array_name}[@]}"
+  if [[ "$length" -eq 0 ]]; then
+    return 1
+  fi
+
+  eval "set -- \"\${${array_name}[@]}\""
+  array_contains "$needle" "$@"
+}
+
 dependency_class() {
   local name="$1"
   local resolved_path="${2:-}"
@@ -99,17 +113,17 @@ record_packaged_dependency() {
 
   case "$class_name" in
     mpv-core)
-      if ! array_contains "$base_name" "${MPV_CORE_DYLIBS[@]}"; then
+      if ! array_contains_var "$base_name" MPV_CORE_DYLIBS; then
         MPV_CORE_DYLIBS+=("$base_name")
       fi
       ;;
     ffmpeg)
-      if ! array_contains "$base_name" "${FFMPEG_DYLIBS[@]}"; then
+      if ! array_contains_var "$base_name" FFMPEG_DYLIBS; then
         FFMPEG_DYLIBS+=("$base_name")
       fi
       ;;
     other-mpv)
-      if ! array_contains "$base_name" "${OTHER_MPV_DYLIBS[@]}"; then
+      if ! array_contains_var "$base_name" OTHER_MPV_DYLIBS; then
         OTHER_MPV_DYLIBS+=("$base_name")
       fi
       ;;
@@ -119,7 +133,7 @@ record_packaged_dependency() {
 record_system_dependency() {
   local dep="$1"
 
-  if ! array_contains "$dep" "${SYSTEM_DEPENDENCIES[@]}"; then
+  if ! array_contains_var "$dep" SYSTEM_DEPENDENCIES; then
     SYSTEM_DEPENDENCIES+=("$dep")
   fi
 }
@@ -127,7 +141,7 @@ record_system_dependency() {
 record_unresolved_dependency() {
   local dep="$1"
 
-  if ! array_contains "$dep" "${UNRESOLVED_DEPENDENCIES[@]}"; then
+  if ! array_contains_var "$dep" UNRESOLVED_DEPENDENCIES; then
     UNRESOLVED_DEPENDENCIES+=("$dep")
   fi
 }
@@ -191,7 +205,7 @@ collect_dylib_closure() {
     source="${queue[$index]}"
     index=$((index + 1))
 
-    if [[ "${#processed[@]}" -gt 0 ]] && array_contains "$source" "${processed[@]}"; then
+    if array_contains_var "$source" processed; then
       continue
     fi
 
@@ -226,7 +240,7 @@ collect_dylib_closure() {
         resolved_class="$(dependency_class "$resolved_base" "$resolved")"
         printf '  [%s] %s -> %s\n' "$resolved_class" "$dep" "$resolved_base" >&2
 
-        if ! array_contains "$resolved" "${processed[@]}" && ! array_contains "$resolved" "${queue[@]}"; then
+        if ! array_contains_var "$resolved" processed && ! array_contains_var "$resolved" queue; then
           queue+=("$resolved")
         fi
       else
