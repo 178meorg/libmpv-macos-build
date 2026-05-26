@@ -5,7 +5,7 @@ set -euo pipefail
 SOURCE_DIR="${1:-}"
 
 if [[ -z "$SOURCE_DIR" ]]; then
-  echo "Usage: build_macos_iina_compatible.sh <mpv-source-dir>" >&2
+  echo "Usage: build_macos_libmpv_qt.sh <mpv-source-dir>" >&2
   exit 1
 fi
 
@@ -51,15 +51,10 @@ meson_args=(
   -Dgl-cocoa=enabled
   -Dvideotoolbox-gl=enabled
   -Dvideotoolbox-pl=enabled
-  -Dswift-build=enabled
-  -Dmacos-cocoa-cb=enabled
-  -Dmacos-media-player=enabled
-  -Dmacos-touchbar=enabled
   -Dvulkan=enabled
   -Dcdda=disabled
   -Ddvdnav=disabled
   -Dlibbluray=disabled
-  -Dswift-flags="${SWIFT_FLAGS:-}"
 )
 
 PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig/" CC="${CC:-cc}" CXX="${CXX:-c++}" \

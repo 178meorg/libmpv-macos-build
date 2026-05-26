@@ -1,6 +1,6 @@
-# macOS mpv Build Workflow
+# macOS Qt libmpv Build Workflow
 
-This repository builds macOS `mpv` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a small build-flag override for shell compatibility in CI.
+This repository builds macOS `libmpv` and `mpv.app` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a Qt-oriented macOS build profile for `libmpv` consumers.
 
 Each run builds two architectures:
 
@@ -60,7 +60,7 @@ Each matrix job:
 1. checks out this packaging repository
 2. checks out upstream `mpv-player/mpv`
 3. installs the same Homebrew dependencies as upstream macOS CI
-4. runs a macOS CI-compatible build script based on upstream `ci/build-macos.sh`
+4. runs a Qt/libmpv-oriented macOS build script based on upstream `ci/build-macos.sh`
 5. runs `meson test -C build`
 6. packages `mpv.app`
 7. exports raw `libmpv.dylib` from `$HOME/out/mpv/lib`
@@ -79,7 +79,7 @@ Manual runs can override the upstream ref with the `mpv_ref` input.
 
 ## Local usage
 
-Install the same dependencies used by upstream CI, clone upstream `mpv`, and run the official build script:
+Install the same dependencies used by this workflow, clone upstream `mpv`, and run the Qt/libmpv macOS build script:
 
 ```bash
 brew update
@@ -89,7 +89,7 @@ brew install autoconf automake pkgconf libtool python freetype fribidi little-cm
 
 git clone https://github.com/mpv-player/mpv.git
 cd mpv
-TRAVIS_OS_NAME=local ./ci/build-macos.sh
+TRAVIS_OS_NAME=local /path/to/this/repo/scripts/build_macos_libmpv_qt.sh "$PWD"
 meson compile -C build macos-bundle
 ```
 

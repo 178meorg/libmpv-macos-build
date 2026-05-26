@@ -29,11 +29,9 @@ jobs:
         include:
           - os: macos-15
             artifact_suffix: arm64
-            swift: ""
             target: ""
           - os: macos-15-intel
             artifact_suffix: x86_64
-            swift: ""
             target: ""
 
     steps:
@@ -88,11 +86,10 @@ jobs:
         shell: bash
         env:
           TRAVIS_OS_NAME: ${{ matrix.os }}
-          SWIFT_FLAGS: ${{ matrix.swift }}
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
         run: |
           rm -rf "$HOME/out/mpv"
-          bash ./scripts/build_macos_iina_compatible.sh "$GITHUB_WORKSPACE/mpv"
+          bash ./scripts/build_macos_libmpv_qt.sh "$GITHUB_WORKSPACE/mpv"
 
       - name: Verify libmpv output
         shell: bash
