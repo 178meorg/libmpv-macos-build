@@ -175,8 +175,8 @@ list_dylib_dependencies() {
 
 collect_dylib_closure() {
   local root="$1"
-  local queue=("$root")
-  local processed=()
+  local -a queue=("$root")
+  local -a processed=()
   local index=0
   local source=""
   local source_base=""
@@ -191,7 +191,7 @@ collect_dylib_closure() {
     source="${queue[$index]}"
     index=$((index + 1))
 
-    if array_contains "$source" "${processed[@]}"; then
+    if [[ "${#processed[@]}" -gt 0 ]] && array_contains "$source" "${processed[@]}"; then
       continue
     fi
 
