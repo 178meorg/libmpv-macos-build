@@ -2,16 +2,17 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ALLOWLIST_FILE="${SCRIPT_DIR}/libmpv-dylibs-iina.txt"
 ARCH=""
 OUTPUT_DIR=""
 WORK_DIR="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
 MPV_VERSION="${MPV_VERSION:-}"
 INSTALL_PREFIX=""
 SOURCE_DIR=""
-ALLOWED_DYLIBS=()
-ALLOWED_DYLIB_KEYS=()
+SYSTEM_DEPENDENCIES=()
+MPV_CORE_DYLIBS=()
+FFMPEG_DYLIBS=()
+OTHER_MPV_DYLIBS=()
+UNRESOLVED_DEPENDENCIES=()
 
 usage() {
   cat <<'EOF'
@@ -20,45 +21,26 @@ Usage:
 EOF
 }
 
-load_allowed_dylibs() {
-  if [[ ! -f "$ALLOWLIST_FILE" ]]; then
-    echo "Failed to locate allowlist file at ${ALLOWLIST_FILE}" >&2
-    exit 1
-  fi
-
-  while IFS= read -r line; do
-    [[ -z "$line" || "${line:0:1}" == "#" ]] && continue
-    ALLOWED_DYLIBS+=("$line")
-    ALLOWED_DYLIB_KEYS+=("$(canonical_dylib_name "$line")")
-  done < "$ALLOWLIST_FILE"
-
-  if [[ "${#ALLOWED_DYLIBS[@]}" -eq 0 ]]; then
-    echo "No dylibs configured in ${ALLOWLIST_FILE}" >&2
-    exit 1
-  fi
-}
-
 canonical_dylib_name() {
   local name="${1##*/}"
   name="${name%.dylib}"
 
-  while [[ "$name" == *.[0-9] ]]; do
-    name="${name%.[0-9]}"
-  done
-
-  while [[ "$name" == *.[0-9][0-9] ]]; do
-    name="${name%.[0-9][0-9]}"
-  done
-
-  while [[ "$name" == *.[0-9][0-9][0-9] ]]; do
-    name="${name%.[0-9][0-9][0-9]}"
-  done
-
-  while [[ "$name" == *.[0-9][0-9][0-9][0-9] ]]; do
-    name="${name%.[0-9][0-9][0-9][0-9]}"
+  while [[ "$name" =~ \.[0-9]+$ ]]; do
+    name="${name%.*}"
   done
 
   printf '%s\n' "$name"
+}
+
+is_ffmpeg_dependency() {
+  case "$(canonical_dylib_name "$1")" in
+    libavcodec|libavdevice|libavfilter|libavformat|libavutil|libpostproc|libswresample|libswscale)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
 }
 
 is_system_dependency() {
@@ -86,15 +68,68 @@ array_contains() {
   return 1
 }
 
-is_allowed_dylib() {
+dependency_class() {
   local name="$1"
-  local key="$(canonical_dylib_name "$name")"
+  local resolved_path="${2:-}"
 
-  if [[ "$key" == "libmpv" ]]; then
+  if [[ "$(canonical_dylib_name "$name")" == "libmpv" ]]; then
+    printf '%s\n' "mpv-core"
     return 0
   fi
 
-  array_contains "$key" "${ALLOWED_DYLIB_KEYS[@]}"
+  if [[ -n "$resolved_path" ]] && is_system_dependency "$resolved_path"; then
+    printf '%s\n' "system"
+    return 0
+  fi
+
+  if is_ffmpeg_dependency "$name"; then
+    printf '%s\n' "ffmpeg"
+    return 0
+  fi
+
+  printf '%s\n' "other-mpv"
+}
+
+record_packaged_dependency() {
+  local source="$1"
+  local class_name="$2"
+  local base_name
+
+  base_name="$(basename "$source")"
+
+  case "$class_name" in
+    mpv-core)
+      if ! array_contains "$base_name" "${MPV_CORE_DYLIBS[@]}"; then
+        MPV_CORE_DYLIBS+=("$base_name")
+      fi
+      ;;
+    ffmpeg)
+      if ! array_contains "$base_name" "${FFMPEG_DYLIBS[@]}"; then
+        FFMPEG_DYLIBS+=("$base_name")
+      fi
+      ;;
+    other-mpv)
+      if ! array_contains "$base_name" "${OTHER_MPV_DYLIBS[@]}"; then
+        OTHER_MPV_DYLIBS+=("$base_name")
+      fi
+      ;;
+  esac
+}
+
+record_system_dependency() {
+  local dep="$1"
+
+  if ! array_contains "$dep" "${SYSTEM_DEPENDENCIES[@]}"; then
+    SYSTEM_DEPENDENCIES+=("$dep")
+  fi
+}
+
+record_unresolved_dependency() {
+  local dep="$1"
+
+  if ! array_contains "$dep" "${UNRESOLVED_DEPENDENCIES[@]}"; then
+    UNRESOLVED_DEPENDENCIES+=("$dep")
+  fi
 }
 
 resolve_dependency_source() {
@@ -134,23 +169,40 @@ resolve_dependency_source() {
   return 1
 }
 
+list_dylib_dependencies() {
+  otool -L "$1" | tail -n +2 | awk '{print $1}'
+}
+
 collect_dylib_closure() {
   local root="$1"
   local queue=("$root")
   local processed=()
   local index=0
+  local source=""
+  local source_base=""
+  local source_class=""
+  local dest=""
+  local dep=""
+  local resolved=""
+  local resolved_base=""
+  local resolved_class=""
 
   while [[ "$index" -lt "${#queue[@]}" ]]; do
-    local source="${queue[$index]}"
+    source="${queue[$index]}"
     index=$((index + 1))
 
-    if [[ "${#processed[@]}" -gt 0 ]] && array_contains "$source" "${processed[@]}"; then
+    if array_contains "$source" "${processed[@]}"; then
       continue
     fi
 
     processed+=("$source")
 
-    local dest="${lib_dir}/$(basename "$source")"
+    source_base="$(basename "$source")"
+    source_class="$(dependency_class "$source_base" "$source")"
+    record_packaged_dependency "$source" "$source_class"
+    printf 'Packaging [%s] %s\n' "$source_class" "$source_base" >&2
+
+    dest="${lib_dir}/${source_base}"
     if [[ -e "$dest" ]]; then
       if ! cmp -s "$source" "$dest"; then
         echo "Dependency basename collision at ${dest}" >&2
@@ -164,31 +216,31 @@ collect_dylib_closure() {
       [[ -z "$dep" ]] && continue
 
       if is_system_dependency "$dep"; then
+        record_system_dependency "$dep"
+        printf '  [system] %s\n' "$dep" >&2
         continue
       fi
 
       if resolved="$(resolve_dependency_source "$dep")"; then
-        local resolved_base="$(basename "$resolved")"
-        if ! is_allowed_dylib "$resolved_base"; then
-          echo "Dependency ${resolved_base} referenced by ${source} is not in ${ALLOWLIST_FILE}" >&2
-          exit 1
-        fi
+        resolved_base="$(basename "$resolved")"
+        resolved_class="$(dependency_class "$resolved_base" "$resolved")"
+        printf '  [%s] %s -> %s\n' "$resolved_class" "$dep" "$resolved_base" >&2
 
         if ! array_contains "$resolved" "${processed[@]}" && ! array_contains "$resolved" "${queue[@]}"; then
           queue+=("$resolved")
         fi
       else
+        record_unresolved_dependency "$dep"
         echo "Warning: unable to resolve dependency ${dep} referenced by ${source}" >&2
       fi
-    done < <(otool -L "$source" | tail -n +2 | awk '{print $1}')
+    done < <(list_dylib_dependencies "$source")
   done
 
-  local source dest base dep resolved dep_base
   for source in "${processed[@]}"; do
-    base="$(basename "$source")"
-    dest="${lib_dir}/${base}"
+    source_base="$(basename "$source")"
+    dest="${lib_dir}/${source_base}"
 
-    install_name_tool -id "@loader_path/${base}" "$dest"
+    install_name_tool -id "@loader_path/${source_base}" "$dest"
 
     while IFS= read -r dep; do
       [[ -z "$dep" ]] && continue
@@ -201,10 +253,41 @@ collect_dylib_closure() {
         continue
       fi
 
-      dep_base="$(basename "$resolved")"
-      install_name_tool -change "$dep" "@loader_path/${dep_base}" "$dest"
-    done < <(otool -L "$source" | tail -n +2 | awk '{print $1}')
+      resolved_base="$(basename "$resolved")"
+      install_name_tool -change "$dep" "@loader_path/${resolved_base}" "$dest"
+    done < <(list_dylib_dependencies "$source")
   done
+}
+
+write_dependency_report() {
+  local report_path="$1"
+  local item
+
+  {
+    printf 'libmpv dependency report\n'
+    printf 'version: %s\n' "$MPV_VERSION"
+    printf 'arch: %s\n' "$ARCH"
+    printf '\n[mpv-core]\n'
+    for item in "${MPV_CORE_DYLIBS[@]}"; do
+      printf '%s\n' "$item"
+    done
+    printf '\n[ffmpeg-dependencies]\n'
+    for item in "${FFMPEG_DYLIBS[@]}"; do
+      printf '%s\n' "$item"
+    done
+    printf '\n[other-mpv-dependencies]\n'
+    for item in "${OTHER_MPV_DYLIBS[@]}"; do
+      printf '%s\n' "$item"
+    done
+    printf '\n[system-dependencies]\n'
+    for item in "${SYSTEM_DEPENDENCIES[@]}"; do
+      printf '%s\n' "$item"
+    done
+    printf '\n[unresolved-non-system]\n'
+    for item in "${UNRESOLVED_DEPENDENCIES[@]}"; do
+      printf '%s\n' "$item"
+    done
+  } > "$report_path"
 }
 
 detect_version() {
@@ -290,8 +373,6 @@ if [[ -z "$MPV_VERSION" ]]; then
   exit 1
 fi
 
-load_allowed_dylibs
-
 mkdir -p "$OUTPUT_DIR" "$WORK_DIR"
 
 stage_dir="$(mktemp -d "${WORK_DIR%/}/libmpv-${ARCH}.XXXXXX")"
@@ -322,6 +403,8 @@ if [[ -f "${INSTALL_PREFIX}/lib/pkgconfig/mpv.pc" ]]; then
   mkdir -p "${lib_dir}/pkgconfig"
   cp "${INSTALL_PREFIX}/lib/pkgconfig/mpv.pc" "${lib_dir}/pkgconfig/"
 fi
+
+write_dependency_report "${package_root}/dependency-report.txt"
 
 tar -C "$stage_dir" -czf "$archive_path" "$package_name"
 

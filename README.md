@@ -1,6 +1,6 @@
 # macOS mpv Build Workflow
 
-This repository now builds macOS `mpv` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a small build-flag override to keep the dylib set aligned with IINA.
+This repository builds macOS `mpv` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a small build-flag override for shell compatibility in CI.
 
 Each run builds two architectures:
 
@@ -21,6 +21,7 @@ The `libmpv` archive has this layout:
 
 ```text
 libmpv-<version>-macos-<arch>/
+  dependency-report.txt
   include/
     mpv/
       *.h
@@ -33,7 +34,7 @@ libmpv-<version>-macos-<arch>/
 
 The `lib/` directory also includes the non-system dylib dependencies needed by `libmpv.dylib`, with their install names rewritten to `@loader_path/<name>`.
 
-The dependency set is restricted to the IINA dylib allowlist in [scripts/libmpv-dylibs-iina.txt](/home/ice/workspace/libmpv-macos-build/scripts/libmpv-dylibs-iina.txt:1). Matching ignores trailing version suffixes such as `.61` or `.62`. If upstream mpv starts requiring a new non-system library family, packaging fails until the allowlist is updated.
+`dependency-report.txt` records the packaged `mpv` dylib, detected FFmpeg dylibs, other packaged third-party dylibs, and the system libraries referenced by the closure.
 
 ## Trigger behavior
 
@@ -66,8 +67,6 @@ Each matrix job:
 8. packages `libmpv` from `$HOME/out/mpv`
 
 The release job downloads both architecture artifacts and uploads all generated `.tar.gz` files to the GitHub Release.
-
-To stay compatible with the IINA dylib allowlist, the build disables `cdda` and `caca`, which would otherwise introduce extra library families such as `libcdio_paranoia`.
 
 ## Configurable variables
 

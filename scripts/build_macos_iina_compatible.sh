@@ -41,7 +41,6 @@ meson setup build $common_args \
   -D{plain-gl,rubberband,zimg,zlib}=enabled \
   -D{cocoa,coreaudio,gl-cocoa,videotoolbox-gl,videotoolbox-pl}=enabled \
   -D{swift-build,macos-cocoa-cb,macos-media-player,macos-touchbar,vulkan}=enabled \
-  -D{caca,cdda}=disabled \
   -Dswift-flags="${SWIFT_FLAGS:-}"
 
 meson compile -C build -j4
