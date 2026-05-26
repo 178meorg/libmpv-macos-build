@@ -82,6 +82,22 @@ array_contains_var() {
   array_contains "$needle" "$@"
 }
 
+print_array_var() {
+  local array_name="$1"
+  local item
+  local length=0
+
+  eval "length=\${#${array_name}[@]}"
+  if [[ "$length" -eq 0 ]]; then
+    return 0
+  fi
+
+  eval "set -- \"\${${array_name}[@]}\""
+  for item in "$@"; do
+    printf '%s\n' "$item"
+  done
+}
+
 dependency_class() {
   local name="$1"
   local resolved_path="${2:-}"
@@ -282,25 +298,15 @@ write_dependency_report() {
     printf 'version: %s\n' "$MPV_VERSION"
     printf 'arch: %s\n' "$ARCH"
     printf '\n[mpv-core]\n'
-    for item in "${MPV_CORE_DYLIBS[@]}"; do
-      printf '%s\n' "$item"
-    done
+    print_array_var MPV_CORE_DYLIBS
     printf '\n[ffmpeg-dependencies]\n'
-    for item in "${FFMPEG_DYLIBS[@]}"; do
-      printf '%s\n' "$item"
-    done
+    print_array_var FFMPEG_DYLIBS
     printf '\n[other-mpv-dependencies]\n'
-    for item in "${OTHER_MPV_DYLIBS[@]}"; do
-      printf '%s\n' "$item"
-    done
+    print_array_var OTHER_MPV_DYLIBS
     printf '\n[system-dependencies]\n'
-    for item in "${SYSTEM_DEPENDENCIES[@]}"; do
-      printf '%s\n' "$item"
-    done
+    print_array_var SYSTEM_DEPENDENCIES
     printf '\n[unresolved-non-system]\n'
-    for item in "${UNRESOLVED_DEPENDENCIES[@]}"; do
-      printf '%s\n' "$item"
-    done
+    print_array_var UNRESOLVED_DEPENDENCIES
   } > "$report_path"
 }
 
