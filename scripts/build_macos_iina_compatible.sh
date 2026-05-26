@@ -16,6 +16,14 @@ fi
 
 pushd "$SOURCE_DIR" >/dev/null
 
+# Upstream ci/build-common.sh appends to these variables directly, which
+# trips set -u if the caller did not define them in the environment.
+: "${CFLAGS:=}"
+: "${CXXFLAGS:=}"
+: "${CPPFLAGS:=}"
+: "${LDFLAGS:=}"
+export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+
 . ./ci/build-common.sh
 
 MPV_INSTALL_PREFIX="${HOME}/out/mpv"
