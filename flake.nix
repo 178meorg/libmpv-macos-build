@@ -60,10 +60,7 @@
               mbedtls
               mujs
               rubberband
-              shaderc
               uchardet
-              vulkan-headers
-              vulkan-loader
               xz
               zimg
               zlib

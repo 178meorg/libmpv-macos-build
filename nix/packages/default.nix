@@ -56,12 +56,7 @@ rec {
     inherit zlib;
   };
   libplacebo = callPackage ./libplacebo {
-    inherit
-      lcms2
-      shaderc
-      vulkan-headers
-      vulkan-loader
-      ;
+    inherit lcms2;
   };
   libsamplerate = callPackage ./libsamplerate { };
   libunibreak = callPackage ./libunibreak { };
