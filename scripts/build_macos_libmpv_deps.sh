@@ -74,6 +74,7 @@ export HOMEBREW_BUILD_FROM_SOURCE=1
 export HOMEBREW_NO_INSTALL_FROM_API=1
 export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
 export HOMEBREW_NO_ANALYTICS=1
+export HOMEBREW_NO_ENV_HINTS=1
 
 runtime_formulae=(
   ffmpeg
@@ -119,7 +120,11 @@ array_contains() {
 }
 
 echo "Building runtime dependencies from source for ${ARCH}, target macOS ${TARGET}"
-mapfile -t dependency_formulae < <(
+dependency_formulae=()
+while IFS= read -r formula; do
+  [[ -n "$formula" ]] || continue
+  dependency_formulae+=("$formula")
+done < <(
   {
     brew deps --formula --topological "${runtime_formulae[@]}"
     printf '%s\n' "${runtime_formulae[@]}"
