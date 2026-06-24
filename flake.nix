@@ -18,37 +18,44 @@
     in
     {
       devShells = eachDarwinSystem ({ pkgs, ... }: {
-        libmpv-macos = pkgs.mkShell {
-          packages = with pkgs; [
-            autoconf
-            automake
-            cmake
-            meson
-            nasm
-            ninja
-            pkg-config
-            python3
+        libmpv-macos =
+          let
+            uchardet = pkgs.callPackage ./nix/packages/uchardet {
+              macosDeploymentTarget = "11.0";
+            };
+          in
+          pkgs.mkShell {
+            packages = with pkgs; [
+              autoconf
+              automake
+              cmake
+              meson
+              nasm
+              ninja
+              pkg-config
+              python3
 
-            ffmpeg
-            freetype
-            fribidi
-            harfbuzz
-            lcms2
-            libarchive
-            libass
-            libjpeg
-            libtool
-            luajit
-            mujs
-            rubberband
-            uchardet
-            zimg
-          ];
+              ffmpeg
+              freetype
+              fribidi
+              harfbuzz
+              lcms2
+              libarchive
+              libass
+              libjpeg
+              libtool
+              luajit
+              mujs
+              rubberband
+              zimg
+            ] ++ [
+              uchardet
+            ];
 
-          shellHook = ''
-            export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"
-          '';
-        };
+            shellHook = ''
+              export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"
+            '';
+          };
       });
     };
 }

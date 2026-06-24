@@ -96,6 +96,7 @@ meson_args=(
   -Djpeg=enabled
   -Dplain-gl=enabled
   -Drubberband=enabled
+  -Duchardet=enabled
   -Dzimg=enabled
   -Dzlib=enabled
   -Dcocoa=enabled
