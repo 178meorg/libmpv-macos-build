@@ -65,6 +65,20 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
+      - name: Verify Nix dependency shell
+        shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
+        run: |
+          nix develop .#libmpv-macos -c bash -lc '
+            set -euo pipefail
+            pkg-config --modversion libplacebo
+            pkg-config --modversion libavcodec
+            pkg-config --modversion libass
+            pkg-config --modversion uchardet
+            pkg-config --modversion zimg
+          '
+
       - name: Build libmpv
         id: build
         shell: bash
@@ -151,11 +165,6 @@ jobs:
           if find "$check_dir" -name 'libcaca*.dylib' -print -quit | grep -q .; then
             echo "libcaca must not be packaged for the Qt libmpv build." >&2
             find "$check_dir" -name 'libcaca*.dylib' >&2
-            exit 1
-          fi
-          if find "$check_dir" \( -name 'libvulkan*.dylib' -o -name 'libplacebo*.dylib' -o -name 'libshaderc*.dylib' \) -print -quit | grep -q .; then
-            echo "Vulkan/libplacebo/shaderc dylibs must not be packaged for the OpenGL-only Qt libmpv build." >&2
-            find "$check_dir" \( -name 'libvulkan*.dylib' -o -name 'libplacebo*.dylib' -o -name 'libshaderc*.dylib' \) >&2
             exit 1
           fi
           version_code() {

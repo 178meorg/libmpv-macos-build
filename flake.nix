@@ -20,7 +20,8 @@
       devShells = eachDarwinSystem ({ pkgs, ... }: {
         libmpv-macos =
           let
-            uchardet = pkgs.callPackage ./nix/packages/uchardet {
+            localPackages = import ./nix/packages {
+              inherit pkgs;
               macosDeploymentTarget = "11.0";
             };
           in
@@ -34,23 +35,40 @@
               ninja
               pkg-config
               python3
-
+              libtool
+            ] ++ (with localPackages; [
+              brotli
+              bzip2
+              expat
               ffmpeg
               freetype
               fribidi
+              gettext
+              glib
+              graphite2
               harfbuzz
+              jpeg-turbo
               lcms2
               libarchive
               libass
-              libjpeg
-              libtool
+              libpng
+              libplacebo
+              libsamplerate
+              libunibreak
+              lz4
               luajit
               mujs
+              pcre2
               rubberband
-              zimg
-            ] ++ [
+              shaderc
               uchardet
-            ];
+              vulkan-headers
+              vulkan-loader
+              xz
+              zimg
+              zlib
+              zstd
+            ]);
 
             shellHook = ''
               export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"

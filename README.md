@@ -1,6 +1,6 @@
 # macOS Qt libmpv Build Workflow
 
-This repository builds macOS `libmpv` directly from upstream `mpv-player/mpv` using a Nix-provided dependency shell, with a Qt/OpenGL-oriented macOS build profile for `libmpv` consumers.
+This repository builds macOS `libmpv` directly from upstream `mpv-player/mpv` using a Nix dependency shell. Third-party runtime dependencies used by the mpv profile are built through this repository's own `nix/packages/<name>` package set so their macOS deployment target can be controlled consistently.
 
 Each run builds two architectures:
 
@@ -56,8 +56,10 @@ Each matrix job:
 3. checks out upstream `mpv-player/mpv`
 4. installs Nix
 5. enters this repository's Nix dependency shell
-6. runs a Qt/libmpv-oriented OpenGL build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, Vulkan/libplacebo, and macOS Swift UI features disabled while keeping VideoToolbox OpenGL support
+6. runs a Qt/libmpv-oriented OpenGL build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, and macOS Swift UI features disabled while keeping VideoToolbox OpenGL support
 7. packages `libmpv` from `$HOME/out/mpv`
+
+Self-built dependency packages live under `nix/packages/<name>`. Build tools still come from nixpkgs, but FFmpeg, libplacebo, libass, uchardet, zimg, rubberband, and related third-party runtime libraries are provided by the local package set.
 
 The release job downloads both architecture artifacts and uploads the generated `libmpv` `.tar.gz` files to the GitHub Release.
 
