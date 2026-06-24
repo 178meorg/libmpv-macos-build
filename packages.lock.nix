@@ -29,16 +29,6 @@
     url = "https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz";
     sha256 = "1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c";
   };
-  gettext = {
-    version = "1.0";
-    url = "https://ftpmirror.gnu.org/gnu/gettext/gettext-1.0.tar.gz";
-    sha256 = "85d99b79c981a404874c02e0342176cf75c7698e2b51fe41031cf6526d974f1a";
-  };
-  glib = {
-    version = "2.88.1";
-    url = "https://download.gnome.org/sources/glib/2.88/glib-2.88.1.tar.xz";
-    sha256 = "51ab804c56f6eab3e5045c774d1290ac5e4c923d4f9a3d8e33123bee45c1840e";
-  };
   graphite2 = {
     version = "1.3.15";
     url = "https://github.com/silnrsi/graphite/releases/download/1.3.15/graphite2-1.3.15.tgz";
@@ -103,11 +93,6 @@
     version = "1.3.9";
     url = "https://mujs.com/downloads/mujs-1.3.9.tar.gz";
     sha256 = "956d5a20dd4efe5aa58673558787b9e2539255f9bf62585e90e1921fa040d89d";
-  };
-  pcre2 = {
-    version = "10.47";
-    url = "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.bz2";
-    sha256 = "47fe8c99461250d42f89e6e8fdaeba9da057855d06eb7fc08d9ca03fd08d7bc7";
   };
   rubberband = {
     version = "4.0.0";

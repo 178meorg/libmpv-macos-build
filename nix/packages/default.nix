@@ -20,8 +20,6 @@ in
   expat = callPackage ./expat { };
   freetype = callPackage ./freetype { };
   fribidi = callPackage ./fribidi { };
-  gettext = callPackage ./gettext { };
-  glib = callPackage ./glib { };
   graphite2 = callPackage ./graphite2 { };
   harfbuzz = callPackage ./harfbuzz { };
   jpeg-turbo = callPackage ./jpeg-turbo { };
@@ -35,7 +33,6 @@ in
   lz4 = callPackage ./lz4 { };
   luajit = callPackage ./luajit { };
   mujs = callPackage ./mujs { };
-  pcre2 = callPackage ./pcre2 { };
   rubberband = callPackage ./rubberband { };
   shaderc = callPackage ./shaderc { };
   uchardet = callPackage ./uchardet {

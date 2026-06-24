@@ -43,8 +43,6 @@
               ffmpeg
               freetype
               fribidi
-              gettext
-              glib
               graphite2
               harfbuzz
               jpeg-turbo
@@ -58,7 +56,6 @@
               lz4
               luajit
               mujs
-              pcre2
               rubberband
               shaderc
               uchardet
