@@ -65,19 +65,8 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
-      - name: Verify Nix dependency shell
-        shell: bash
-        env:
-          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
-        run: |
-          nix develop .#libmpv-macos -c bash -lc '
-            set -euo pipefail
-            pkg-config --modversion libplacebo
-            pkg-config --modversion libavcodec
-            pkg-config --modversion libass
-            pkg-config --modversion uchardet
-            pkg-config --modversion zimg
-          '
+      - name: Cache Nix store
+        uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Build libmpv
         id: build
@@ -88,8 +77,15 @@ jobs:
           MPV_DEPS_PROVIDER: nix
         run: |
           rm -rf "$HOME/out/mpv"
-          nix develop .#libmpv-macos -c \
+          nix develop .#libmpv-macos -c bash -lc '
+            set -euo pipefail
+            pkg-config --modversion libplacebo
+            pkg-config --modversion libavcodec
+            pkg-config --modversion libass
+            pkg-config --modversion uchardet
+            pkg-config --modversion zimg
             bash ./scripts/build_macos_libmpv_qt.sh "$GITHUB_WORKSPACE/mpv"
+          '
 
       - name: Verify libmpv output
         shell: bash
