@@ -13,11 +13,19 @@ let
       inherit pkgs darwinTargetedPackage;
     } // args);
 in
-{
-  ffmpeg = callPackage ./ffmpeg { };
+rec {
   brotli = callPackage ./brotli { };
   bzip2 = callPackage ./bzip2 { };
+  dav1d = callPackage ./dav1d { };
   expat = callPackage ./expat { };
+  ffmpeg = callPackage ./ffmpeg {
+    inherit
+      dav1d
+      libxml2
+      mbedtls
+      zlib
+      ;
+  };
   freetype = callPackage ./freetype { };
   fribidi = callPackage ./fribidi { };
   graphite2 = callPackage ./graphite2 { };
@@ -30,8 +38,10 @@ in
   libplacebo = callPackage ./libplacebo { };
   libsamplerate = callPackage ./libsamplerate { };
   libunibreak = callPackage ./libunibreak { };
+  libxml2 = callPackage ./libxml2 { };
   lz4 = callPackage ./lz4 { };
   luajit = callPackage ./luajit { };
+  mbedtls = callPackage ./mbedtls { };
   mujs = callPackage ./mujs { };
   rubberband = callPackage ./rubberband { };
   shaderc = callPackage ./shaderc { };

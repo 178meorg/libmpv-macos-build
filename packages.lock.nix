@@ -14,6 +14,11 @@
     url = "https://github.com/libexpat/libexpat/releases/download/R_2_8_1/expat-2.8.1.tar.xz";
     sha256 = "10b195ee78160a908388180a8fe3603d4e9a12f4755fbf5f3816b23a9d750da0";
   };
+  dav1d = {
+    version = "1.5.3";
+    url = "https://code.videolan.org/videolan/dav1d/-/archive/1.5.3/dav1d-1.5.3.tar.bz2";
+    sha256 = "e099f53253f6c247580c554d53a13f1040638f2066edc3c740e4c2f15174ce22";
+  };
   ffmpeg = {
     version = "8.1.2";
     url = "https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz";
@@ -79,6 +84,11 @@
     url = "https://github.com/adah1972/libunibreak/releases/download/libunibreak_7_0/libunibreak-7.0.tar.gz";
     sha256 = "8c9a6e121736cd0d5c890ae3ae96f3f4010a19aa040f1dbded833a62a87717d3";
   };
+  libxml2 = {
+    version = "2.15.3";
+    url = "https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz";
+    sha256 = "78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07";
+  };
   luajit = {
     version = "2.1.1781602682";
     url = "https://github.com/LuaJIT/LuaJIT/archive/8e6520a7aecd0517e792b359afbbfd7274791f5f.tar.gz";
@@ -93,6 +103,11 @@
     version = "1.3.9";
     url = "https://mujs.com/downloads/mujs-1.3.9.tar.gz";
     sha256 = "956d5a20dd4efe5aa58673558787b9e2539255f9bf62585e90e1921fa040d89d";
+  };
+  mbedtls = {
+    version = "4.1.0";
+    url = "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-4.1.0/mbedtls-4.1.0.tar.bz2";
+    sha256 = "377a09cf8eb81b5fb2707045e5522d5489d3309fed5006c9874e60558fc81d10";
   };
   rubberband = {
     version = "4.0.0";

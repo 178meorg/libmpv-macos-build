@@ -39,6 +39,7 @@
             ] ++ (with localPackages; [
               brotli
               bzip2
+              dav1d
               expat
               ffmpeg
               freetype
@@ -53,8 +54,10 @@
               libplacebo
               libsamplerate
               libunibreak
+              libxml2
               lz4
               luajit
+              mbedtls
               mujs
               rubberband
               shaderc
