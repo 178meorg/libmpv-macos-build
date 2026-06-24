@@ -60,7 +60,7 @@ stdenv.mkDerivation {
 
   mesonFlags = [
     "-Dvariant=video"
-    "-Dflavor=default"
+    "-Dflavor=full"
   ];
 
   MACOSX_DEPLOYMENT_TARGET = macosDeploymentTarget;
