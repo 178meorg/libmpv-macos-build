@@ -29,6 +29,16 @@ export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 MPV_INSTALL_PREFIX="${HOME}/out/mpv"
 MPV_VARIANT="${TRAVIS_OS_NAME:-local}"
 
+filtered_common_args=()
+read -r -a common_args_words <<< "$common_args"
+for arg in "${common_args_words[@]}"; do
+  if [[ "$arg" == "--werror" ]]; then
+    continue
+  fi
+
+  filtered_common_args+=("$arg")
+done
+
 if [[ -d "./build/${MPV_VARIANT}" ]]; then
   rm -rf "./build/${MPV_VARIANT}"
 fi
@@ -59,7 +69,7 @@ meson_args=(
 )
 
 PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig/" CC="${CC:-cc}" CXX="${CXX:-c++}" \
-  meson setup build $common_args "${meson_args[@]}"
+  meson setup build "${filtered_common_args[@]}" "${meson_args[@]}"
 
 meson compile -C build -j4
 meson install -C build
