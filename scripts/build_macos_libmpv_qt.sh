@@ -78,7 +78,47 @@ if ! grep -q "HAVE_COCOA && HAVE_SWIFT_BUILD" player/clipboard/clipboard.c; then
   exit 1
 fi
 
-meson_args=(
+meson_option_supported() {
+  local option_name="$1"
+  local option_file=""
+
+  for option_file in meson.options meson_options.txt; do
+    if [[ -f "$option_file" ]] && grep -Eq "option\\(['\"]${option_name}['\"]" "$option_file"; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+meson_args=()
+add_meson_arg() {
+  local arg="$1"
+  local option_name=""
+
+  case "$arg" in
+    -Dprefix=*|-Dwerror=*|-Dobjc_args=*)
+      meson_args+=("$arg")
+      return 0
+      ;;
+    -D*=*)
+      option_name="${arg#-D}"
+      option_name="${option_name%%=*}"
+      if meson_option_supported "$option_name"; then
+        meson_args+=("$arg")
+      else
+        echo "Skipping unsupported mpv Meson option: ${option_name}" >&2
+      fi
+      return 0
+      ;;
+    *)
+      meson_args+=("$arg")
+      return 0
+      ;;
+  esac
+}
+
+raw_meson_args=(
   -Dprefix="${MPV_INSTALL_PREFIX}"
   -Dwerror=false
   -Dcplayer=false
@@ -115,6 +155,10 @@ meson_args=(
   -Ddvdnav=disabled
   -Dlibbluray=disabled
 )
+
+for arg in "${raw_meson_args[@]}"; do
+  add_meson_arg "$arg"
+done
 
 CC="${CC:-cc}" CXX="${CXX:-c++}" \
   meson setup build "${filtered_common_args[@]}" "${meson_args[@]}"
