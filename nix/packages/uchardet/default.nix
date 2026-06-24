@@ -9,13 +9,17 @@
   ...
 }:
 
+let
+  packageLock = (import ../../../packages.lock.nix).uchardet;
+  inherit (packageLock) version;
+in
+
 stdenv.mkDerivation rec {
   pname = "uchardet";
-  version = "0.0.8";
+  inherit version;
 
   src = fetchurl {
-    url = "https://www.freedesktop.org/software/uchardet/releases/uchardet-${version}.tar.xz";
-    sha256 = "e97a60cfc00a1c147a674b097bb1422abd9fa78a2d9ce3f3fdcc2e78a34ac5f0";
+    inherit (packageLock) url sha256;
   };
 
   nativeBuildInputs = [

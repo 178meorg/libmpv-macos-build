@@ -61,6 +61,8 @@ Each matrix job:
 
 Self-built dependency packages live under `nix/packages/<name>`. Build tools still come from nixpkgs, but FFmpeg, libplacebo, libass, uchardet, zimg, rubberband, and related third-party runtime libraries are provided by the local package set.
 
+Hand-written source packages read their pinned source metadata from `packages.lock.nix`.
+
 The release job downloads both architecture artifacts and uploads the generated `libmpv` `.tar.gz` files to the GitHub Release.
 
 ## Configurable variables
