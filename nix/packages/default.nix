@@ -35,7 +35,14 @@ rec {
   libarchive = callPackage ./libarchive { };
   libass = callPackage ./libass { };
   libpng = callPackage ./libpng { };
-  libplacebo = callPackage ./libplacebo { };
+  libplacebo = callPackage ./libplacebo {
+    inherit
+      lcms2
+      shaderc
+      vulkan-headers
+      vulkan-loader
+      ;
+  };
   libsamplerate = callPackage ./libsamplerate { };
   libunibreak = callPackage ./libunibreak { };
   libxml2 = callPackage ./libxml2 { };
