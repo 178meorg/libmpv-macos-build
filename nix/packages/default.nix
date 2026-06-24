@@ -26,15 +26,35 @@ rec {
       zlib
       ;
   };
-  freetype = callPackage ./freetype { };
+  freetype = callPackage ./freetype {
+    inherit
+      brotli
+      bzip2
+      libpng
+      zlib
+      ;
+  };
   fribidi = callPackage ./fribidi { };
   graphite2 = callPackage ./graphite2 { };
-  harfbuzz = callPackage ./harfbuzz { };
+  harfbuzz = callPackage ./harfbuzz {
+    inherit
+      freetype
+      graphite2
+      ;
+  };
   jpeg-turbo = callPackage ./jpeg-turbo { };
   lcms2 = callPackage ./lcms2 { };
   libarchive = callPackage ./libarchive { };
-  libass = callPackage ./libass { };
-  libpng = callPackage ./libpng { };
+  libass = callPackage ./libass {
+    inherit
+      freetype
+      fribidi
+      harfbuzz
+      ;
+  };
+  libpng = callPackage ./libpng {
+    inherit zlib;
+  };
   libplacebo = callPackage ./libplacebo {
     inherit
       lcms2

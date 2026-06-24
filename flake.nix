@@ -37,17 +37,37 @@
               python3
               libtool
             ] ++ (with localPackages; [
+              brotli
+              bzip2
+              dav1d
+              expat
               ffmpeg
+              freetype
+              fribidi
+              graphite2
+              harfbuzz
               jpeg-turbo
               lcms2
               libarchive
               libass
+              libpng
               libplacebo
+              libsamplerate
+              libunibreak
+              libxml2
+              lz4
               luajit
+              mbedtls
+              mujs
               rubberband
+              shaderc
               uchardet
+              vulkan-headers
+              vulkan-loader
+              xz
               zimg
               zlib
+              zstd
             ]);
 
             shellHook = ''

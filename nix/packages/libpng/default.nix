@@ -1,3 +1,22 @@
-{ pkgs, darwinTargetedPackage }:
+{
+  pkgs,
+  fetchurl,
+  darwinTargetedPackage,
+  zlib,
+  ...
+}:
 
-darwinTargetedPackage pkgs.libpng
+let
+  packageLock = (import ../../../packages.lock.nix).libpng;
+  base = pkgs.libpng.override {
+    inherit zlib;
+  };
+in
+
+darwinTargetedPackage (base.overrideAttrs (_old: {
+  inherit (packageLock) version;
+
+  src = fetchurl {
+    inherit (packageLock) url sha256;
+  };
+}))
