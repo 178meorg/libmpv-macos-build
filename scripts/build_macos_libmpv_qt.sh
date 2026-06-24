@@ -44,6 +44,22 @@ if [[ -d "./build/${MPV_VARIANT}" ]]; then
   rm -rf "./build/${MPV_VARIANT}"
 fi
 
+# mpv v0.41.0 compiles the macOS clipboard backend whenever Cocoa is enabled,
+# but that backend includes the Swift-generated osdep/mac/swift.h header. Keep
+# Cocoa/GL-Cocoa for VideoToolbox OpenGL interop while removing this Swift-only
+# clipboard backend from the libmpv-oriented build.
+perl -0pi -e "s/,\\s*'player\\/clipboard\\/clipboard-mac\\.m'//g" meson.build
+perl -0pi -e 's/#if HAVE_COCOA\s*\n\s*&clipboard_backend_mac,/#if HAVE_COCOA \&\& HAVE_SWIFT_BUILD\n    \&clipboard_backend_mac,/g' \
+  player/clipboard/clipboard.c
+if grep -q "player/clipboard/clipboard-mac.m" meson.build; then
+  echo "Failed to remove Swift-backed macOS clipboard source from meson.build" >&2
+  exit 1
+fi
+if ! grep -q "HAVE_COCOA && HAVE_SWIFT_BUILD" player/clipboard/clipboard.c; then
+  echo "Failed to guard macOS clipboard backend behind HAVE_SWIFT_BUILD" >&2
+  exit 1
+fi
+
 meson_args=(
   -Dprefix="${MPV_INSTALL_PREFIX}"
   -Dwerror=false
