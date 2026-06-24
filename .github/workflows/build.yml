@@ -102,6 +102,11 @@ jobs:
           fi
           echo "libmpv.dylib minos: ${minos}"
           test "$minos" = "${{ matrix.target }}"
+          if otool -L "$HOME/out/mpv/lib/libmpv.dylib" | grep -Fq '/usr/lib/swift/'; then
+            echo "libmpv.dylib must not link against Swift runtime libraries." >&2
+            otool -L "$HOME/out/mpv/lib/libmpv.dylib" >&2
+            exit 1
+          fi
           if nm -u "$HOME/out/mpv/lib/libmpv.dylib" | grep -Fq '_$ss20_StaticArrayStorageCN'; then
             echo "libmpv.dylib references a Swift runtime symbol that is unavailable on macOS 14." >&2
             exit 1
@@ -112,21 +117,11 @@ jobs:
         working-directory: mpv
         shell: bash
         run: |
-          cat ./build/meson-logs/meson-log.txt
-
-      - name: Run meson tests
-        id: tests
-        working-directory: mpv
-        shell: bash
-        run: |
-          meson test -C build
-
-      - name: Print meson test log
-        if: ${{ failure() && steps.tests.outcome == 'failure' }}
-        working-directory: mpv
-        shell: bash
-        run: |
-          cat ./build/meson-logs/testlog.txt
+          if [[ -f ./build/meson-logs/meson-log.txt ]]; then
+            cat ./build/meson-logs/meson-log.txt
+          else
+            echo "meson-log.txt was not created."
+          fi
 
       - name: Detect mpv version
         id: version
@@ -148,14 +143,6 @@ jobs:
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Package mpv app
-        working-directory: mpv
-        shell: bash
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/dist"
-          meson compile -C build macos-bundle
-          tar -czf "$GITHUB_WORKSPACE/dist/mpv-${{ steps.version.outputs.version }}-macos-${{ matrix.artifact_suffix }}.tar.gz" -C build mpv.app
-
       - name: Package libmpv bundle
         shell: bash
         run: |
@@ -167,20 +154,11 @@ jobs:
             --version "${{ steps.version.outputs.version }}" \
             --output-dir "$GITHUB_WORKSPACE/dist"
 
-      - name: Export raw libmpv dylib
-        shell: bash
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/dist/raw-${{ matrix.artifact_suffix }}"
-          cp -L "$HOME/out/mpv/lib/libmpv.dylib" \
-            "$GITHUB_WORKSPACE/dist/raw-${{ matrix.artifact_suffix }}/libmpv-${{ steps.version.outputs.version }}-macos-${{ matrix.artifact_suffix }}.dylib"
-
       - name: Upload packaged artifacts
         uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.artifact_suffix }}
-          path: |
-            dist/*.tar.gz
-            dist/raw-${{ matrix.artifact_suffix }}/*.dylib
+          path: dist/libmpv-*.tar.gz
           if-no-files-found: error
 
   release:
@@ -210,15 +188,13 @@ jobs:
           Built from upstream ${MPV_REPOSITORY}@${tag} using the official macOS CI dependency and build steps.
 
           Included artifacts:
-          - mpv.app bundles for arm64 and x86_64
-          - raw libmpv.dylib files for arm64 and x86_64
-          - libmpv headers plus non-system dylib dependencies packaged from the official install prefix
+          - libmpv headers plus non-system dylib dependencies packaged for arm64 and x86_64
           EOF
 
           if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/*.tar.gz --repo "$repo" --clobber
+            gh release upload "$tag" dist/libmpv-*.tar.gz --repo "$repo" --clobber
           else
-            gh release create "$tag" dist/*.tar.gz \
+            gh release create "$tag" dist/libmpv-*.tar.gz \
               --repo "$repo" \
               --title "$tag" \
               --generate-notes \

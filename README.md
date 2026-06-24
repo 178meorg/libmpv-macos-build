@@ -1,21 +1,15 @@
 # macOS Qt libmpv Build Workflow
 
-This repository builds macOS `libmpv` and `mpv.app` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a Qt-oriented macOS build profile for `libmpv` consumers.
+This repository builds macOS `libmpv` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a Qt-oriented macOS build profile for `libmpv` consumers.
 
 Each run builds two architectures:
 
 - `arm64` on `macos-15`
 - `x86_64` on `macos-15-intel`
 
-Each build produces two archives:
+Each build produces one archive:
 
-- `mpv-<version>-macos-<arch>.tar.gz`
 - `libmpv-<version>-macos-<arch>.tar.gz`
-- `libmpv-<version>-macos-<arch>.dylib`
-
-The `mpv` archive contains `mpv.app`.
-
-The standalone `.dylib` artifact is the raw `libmpv.dylib` copied from the official install prefix.
 
 The `libmpv` archive has this layout:
 
@@ -60,13 +54,10 @@ Each matrix job:
 1. checks out this packaging repository
 2. checks out upstream `mpv-player/mpv`
 3. installs the same Homebrew dependencies as upstream macOS CI
-4. runs a Qt/libmpv-oriented macOS build script based on upstream `ci/build-macos.sh`
-5. runs `meson test -C build`
-6. packages `mpv.app`
-7. exports raw `libmpv.dylib` from `$HOME/out/mpv/lib`
-8. packages `libmpv` from `$HOME/out/mpv`
+4. runs a Qt/libmpv-oriented macOS build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, Cocoa/GL-Cocoa, and macOS Swift UI features disabled
+5. packages `libmpv` from `$HOME/out/mpv`
 
-The release job downloads both architecture artifacts and uploads all generated `.tar.gz` files to the GitHub Release.
+The release job downloads both architecture artifacts and uploads the generated `libmpv` `.tar.gz` files to the GitHub Release.
 
 ## Configurable variables
 
@@ -90,7 +81,6 @@ brew install autoconf automake pkgconf libtool python freetype fribidi little-cm
 git clone https://github.com/mpv-player/mpv.git
 cd mpv
 TRAVIS_OS_NAME=local /path/to/this/repo/scripts/build_macos_libmpv_qt.sh "$PWD"
-meson compile -C build macos-bundle
 ```
 
 To package `libmpv` from the official install prefix:

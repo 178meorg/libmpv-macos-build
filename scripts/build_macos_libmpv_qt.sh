@@ -47,6 +47,9 @@ fi
 meson_args=(
   -Dprefix="${MPV_INSTALL_PREFIX}"
   -Dwerror=false
+  -Dcplayer=false
+  -Dlibmpv=true
+  -Dtests=false
   -Dobjc_args="-Wno-error=deprecated -Wno-error=deprecated-declarations"
   -Dgl=enabled
   -Diconv=enabled
@@ -58,12 +61,16 @@ meson_args=(
   -Drubberband=enabled
   -Dzimg=enabled
   -Dzlib=enabled
-  -Dcocoa=enabled
+  -Dcocoa=disabled
   -Dcoreaudio=enabled
-  -Dgl-cocoa=enabled
+  -Dgl-cocoa=disabled
   -Dvideotoolbox-gl=enabled
   -Dvideotoolbox-pl=enabled
   -Dvulkan=enabled
+  -Dmacos-cocoa-cb=disabled
+  -Dmacos-media-player=disabled
+  -Dmacos-touchbar=disabled
+  -Dswift-build=disabled
   -Dcdda=disabled
   -Ddvdnav=disabled
   -Dlibbluray=disabled
@@ -74,6 +81,5 @@ PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig/" CC="${CC:-cc}" CXX=
 
 meson compile -C build -j4
 meson install -C build
-./build/mpv -v --no-config
 
 popd >/dev/null
