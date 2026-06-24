@@ -54,7 +54,7 @@ Each matrix job:
 1. checks out this packaging repository
 2. checks out upstream `mpv-player/mpv`
 3. installs the same Homebrew dependencies as upstream macOS CI
-4. runs a Qt/libmpv-oriented macOS build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, Cocoa/GL-Cocoa, and macOS Swift UI features disabled
+4. runs a Qt/libmpv-oriented macOS build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, and macOS Swift UI features disabled while keeping VideoToolbox OpenGL support
 5. packages `libmpv` from `$HOME/out/mpv`
 
 The release job downloads both architecture artifacts and uploads the generated `libmpv` `.tar.gz` files to the GitHub Release.
