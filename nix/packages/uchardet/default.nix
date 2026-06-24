@@ -6,6 +6,7 @@
   ninja,
   pkg-config,
   macosDeploymentTarget ? "11.0",
+  ...
 }:
 
 stdenv.mkDerivation rec {
