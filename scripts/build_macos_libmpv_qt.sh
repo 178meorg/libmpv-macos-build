@@ -69,8 +69,10 @@ meson_args=(
   -Dobjc_args="-Wno-error=deprecated -Wno-error=deprecated-declarations"
   -Dgl=enabled
   -Diconv=enabled
+  -Dcaca=disabled
   -Dlcms2=enabled
   -Dlibarchive=enabled
+  -Dlibavdevice=disabled
   -Dlua=enabled
   -Djpeg=enabled
   -Dplain-gl=enabled

@@ -79,7 +79,7 @@ jobs:
           brew update
           brew install -q autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
             luajit libass ffmpeg meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
-            libarchive libcaca rubberband zimg
+            libarchive rubberband zimg
 
       - name: Build with macOS CI-compatible script
         id: build
@@ -153,6 +153,27 @@ jobs:
             --source-dir "$GITHUB_WORKSPACE/mpv" \
             --version "${{ steps.version.outputs.version }}" \
             --output-dir "$GITHUB_WORKSPACE/dist"
+
+      - name: Verify packaged dylibs
+        shell: bash
+        run: |
+          package="dist/libmpv-${{ steps.version.outputs.version }}-macos-${{ matrix.artifact_suffix }}.tar.gz"
+          check_dir="$RUNNER_TEMP/libmpv-check"
+          rm -rf "$check_dir"
+          mkdir -p "$check_dir"
+          tar -xzf "$package" -C "$check_dir"
+          if find "$check_dir" -name 'libcaca*.dylib' -print -quit | grep -q .; then
+            echo "libcaca must not be packaged for the Qt libmpv build." >&2
+            find "$check_dir" -name 'libcaca*.dylib' >&2
+            exit 1
+          fi
+          while IFS= read -r dylib; do
+            minos="$(otool -l "$dylib" | awk '/LC_BUILD_VERSION/{found=1} found && /minos/{print $2; exit}')"
+            if [[ -z "$minos" ]]; then
+              minos="$(otool -l "$dylib" | awk '/LC_VERSION_MIN_MACOSX/{found=1} found && /version/{print $2; exit}')"
+            fi
+            echo "${dylib#$check_dir/}: minos ${minos:-unknown}"
+          done < <(find "$check_dir" -name '*.dylib' -type f | sort)
 
       - name: Upload packaged artifacts
         uses: actions/upload-artifact@v7

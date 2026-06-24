@@ -76,7 +76,7 @@ Install the same dependencies used by this workflow, clone upstream `mpv`, and r
 brew update
 brew install autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
   luajit libass ffmpeg meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
-  libarchive libcaca rubberband zimg
+  libarchive rubberband zimg
 
 git clone https://github.com/mpv-player/mpv.git
 cd mpv
