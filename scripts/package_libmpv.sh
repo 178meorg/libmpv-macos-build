@@ -13,6 +13,7 @@ MPV_CORE_DYLIBS=()
 FFMPEG_DYLIBS=()
 OTHER_MPV_DYLIBS=()
 UNRESOLVED_DEPENDENCIES=()
+PACKAGED_DYLIB_DETAILS=()
 
 usage() {
   cat <<'EOF'
@@ -98,6 +99,18 @@ print_array_var() {
   done
 }
 
+dylib_minos() {
+  local dylib="$1"
+  local minos=""
+
+  minos="$(otool -l "$dylib" | awk '/LC_BUILD_VERSION/{found=1} found && /minos/{print $2; exit}')"
+  if [[ -z "$minos" ]]; then
+    minos="$(otool -l "$dylib" | awk '/LC_VERSION_MIN_MACOSX/{found=1} found && /version/{print $2; exit}')"
+  fi
+
+  printf '%s\n' "$minos"
+}
+
 dependency_class() {
   local name="$1"
   local resolved_path="${2:-}"
@@ -159,6 +172,22 @@ record_unresolved_dependency() {
 
   if ! array_contains_var "$dep" UNRESOLVED_DEPENDENCIES; then
     UNRESOLVED_DEPENDENCIES+=("$dep")
+  fi
+}
+
+record_packaged_dylib_detail() {
+  local source="$1"
+  local class_name="$2"
+  local base_name=""
+  local minos=""
+  local detail=""
+
+  base_name="$(basename "$source")"
+  minos="$(dylib_minos "$source")"
+  detail="${class_name} ${base_name} minos=${minos:-unknown} source=${source}"
+
+  if ! array_contains_var "$detail" PACKAGED_DYLIB_DETAILS; then
+    PACKAGED_DYLIB_DETAILS+=("$detail")
   fi
 }
 
@@ -230,6 +259,7 @@ collect_dylib_closure() {
     source_base="$(basename "$source")"
     source_class="$(dependency_class "$source_base" "$source")"
     record_packaged_dependency "$source" "$source_class"
+    record_packaged_dylib_detail "$source" "$source_class"
     printf 'Packaging [%s] %s\n' "$source_class" "$source_base" >&2
 
     dest="${lib_dir}/${source_base}"
@@ -307,6 +337,8 @@ write_dependency_report() {
     print_array_var SYSTEM_DEPENDENCIES
     printf '\n[unresolved-non-system]\n'
     print_array_var UNRESOLVED_DEPENDENCIES
+    printf '\n[packaged-dylib-details]\n'
+    print_array_var PACKAGED_DYLIB_DETAILS
   } > "$report_path"
 }
 
@@ -422,6 +454,7 @@ collect_dylib_closure "${INSTALL_PREFIX}/lib/libmpv.dylib"
 if [[ -f "${INSTALL_PREFIX}/lib/pkgconfig/mpv.pc" ]]; then
   mkdir -p "${lib_dir}/pkgconfig"
   cp "${INSTALL_PREFIX}/lib/pkgconfig/mpv.pc" "${lib_dir}/pkgconfig/"
+  perl -0pi -e 's/^prefix=.*/prefix=\${pcfiledir}\/..\/../m' "${lib_dir}/pkgconfig/mpv.pc"
 fi
 
 write_dependency_report "${package_root}/dependency-report.txt"

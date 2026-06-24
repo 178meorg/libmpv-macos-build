@@ -53,9 +53,10 @@ Each matrix job:
 
 1. checks out this packaging repository
 2. checks out upstream `mpv-player/mpv`
-3. installs the same Homebrew dependencies as upstream macOS CI
-4. runs a Qt/libmpv-oriented macOS build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, and macOS Swift UI features disabled while keeping VideoToolbox OpenGL support
-5. packages `libmpv` from `$HOME/out/mpv`
+3. installs Homebrew build tools
+4. builds runtime dependencies from source with `MACOSX_DEPLOYMENT_TARGET=11.0`
+5. runs a Qt/libmpv-oriented OpenGL build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, Vulkan/libplacebo, and macOS Swift UI features disabled while keeping VideoToolbox OpenGL support
+6. packages `libmpv` from `$HOME/out/mpv`
 
 The release job downloads both architecture artifacts and uploads the generated `libmpv` `.tar.gz` files to the GitHub Release.
 
@@ -70,17 +71,19 @@ Manual runs can override the upstream ref with the `mpv_ref` input.
 
 ## Local usage
 
-Install the same dependencies used by this workflow, clone upstream `mpv`, and run the Qt/libmpv macOS build script:
+Install the same build tools used by this workflow, build runtime dependencies from source, clone upstream `mpv`, and run the Qt/libmpv macOS build script:
 
 ```bash
 brew update
-brew install autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
-  luajit libass ffmpeg meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
-  libarchive rubberband zimg
+brew install autoconf automake cmake nasm pkgconf libtool python meson ninja rust
+
+MACOSX_DEPLOYMENT_TARGET=11.0 \
+  /path/to/this/repo/scripts/build_macos_libmpv_deps.sh --arch arm64 --target 11.0
 
 git clone https://github.com/mpv-player/mpv.git
 cd mpv
-TRAVIS_OS_NAME=local /path/to/this/repo/scripts/build_macos_libmpv_qt.sh "$PWD"
+MACOSX_DEPLOYMENT_TARGET=11.0 TRAVIS_OS_NAME=local \
+  /path/to/this/repo/scripts/build_macos_libmpv_qt.sh "$PWD"
 ```
 
 To package `libmpv` from the official install prefix:

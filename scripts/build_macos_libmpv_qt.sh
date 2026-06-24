@@ -29,6 +29,21 @@ export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS MACOSX_DEPLOYMENT_TARGET
 
 MPV_INSTALL_PREFIX="${HOME}/out/mpv"
 MPV_VARIANT="${TRAVIS_OS_NAME:-local}"
+BREW_PREFIX="$(brew --prefix)"
+PKG_CONFIG_PATHS=()
+
+for formula in \
+  ffmpeg freetype fribidi harfbuzz jpeg-turbo lcms2 libarchive libass \
+  luajit mujs rubberband uchardet zimg
+do
+  formula_prefix="$(brew --prefix "$formula" 2>/dev/null || true)"
+  [[ -n "$formula_prefix" ]] || continue
+  [[ -d "${formula_prefix}/lib/pkgconfig" ]] && PKG_CONFIG_PATHS+=("${formula_prefix}/lib/pkgconfig")
+  [[ -d "${formula_prefix}/share/pkgconfig" ]] && PKG_CONFIG_PATHS+=("${formula_prefix}/share/pkgconfig")
+done
+
+export PKG_CONFIG_PATH="$(IFS=:; printf '%s' "${PKG_CONFIG_PATHS[*]}")"
+export PATH="${BREW_PREFIX}/bin:${PATH}"
 
 filtered_common_args=()
 read -r -a common_args_words <<< "$common_args"
@@ -73,6 +88,7 @@ meson_args=(
   -Dlcms2=enabled
   -Dlibarchive=enabled
   -Dlibavdevice=disabled
+  -Dlibplacebo=disabled
   -Dlua=enabled
   -Djpeg=enabled
   -Dplain-gl=enabled
@@ -83,8 +99,10 @@ meson_args=(
   -Dcoreaudio=enabled
   -Dgl-cocoa=enabled
   -Dvideotoolbox-gl=enabled
-  -Dvideotoolbox-pl=enabled
-  -Dvulkan=enabled
+  -Dvideotoolbox-pl=disabled
+  -Dvulkan=disabled
+  -Dshaderc=disabled
+  -Dspirv-cross=disabled
   -Dmacos-cocoa-cb=disabled
   -Dmacos-media-player=disabled
   -Dmacos-touchbar=disabled
@@ -94,7 +112,7 @@ meson_args=(
   -Dlibbluray=disabled
 )
 
-PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig/" CC="${CC:-cc}" CXX="${CXX:-c++}" \
+CC="${CC:-cc}" CXX="${CXX:-c++}" \
   meson setup build "${filtered_common_args[@]}" "${meson_args[@]}"
 
 meson compile -C build -j4

@@ -73,13 +73,20 @@ jobs:
         run: |
           find "$(brew config | grep HOMEBREW_PREFIX | cut -f 2- -d ' ')/bin" -lname '*/pkg-config@0*/*' -print -exec brew unlink pkg-config@0.29.2 \; -quit
 
-      - name: Install dependencies
+      - name: Install build tools
         shell: bash
         run: |
           brew update
-          brew install -q autoconf automake pkgconf libtool python freetype fribidi little-cms2 \
-            luajit libass ffmpeg meson rust uchardet mujs libplacebo molten-vk vulkan-loader vulkan-headers \
-            libarchive rubberband zimg
+          brew install -q autoconf automake cmake nasm pkgconf libtool python meson ninja rust
+
+      - name: Build runtime dependencies from source
+        shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
+        run: |
+          ./scripts/build_macos_libmpv_deps.sh \
+            --arch "${{ matrix.artifact_suffix }}" \
+            --target "${{ matrix.target }}"
 
       - name: Build with macOS CI-compatible script
         id: build
@@ -159,6 +166,7 @@ jobs:
         run: |
           package="dist/libmpv-${{ steps.version.outputs.version }}-macos-${{ matrix.artifact_suffix }}.tar.gz"
           check_dir="$RUNNER_TEMP/libmpv-check"
+          target="${{ matrix.target }}"
           rm -rf "$check_dir"
           mkdir -p "$check_dir"
           tar -xzf "$package" -C "$check_dir"
@@ -167,13 +175,42 @@ jobs:
             find "$check_dir" -name 'libcaca*.dylib' >&2
             exit 1
           fi
+          if find "$check_dir" \( -name 'libvulkan*.dylib' -o -name 'libplacebo*.dylib' -o -name 'libshaderc*.dylib' \) -print -quit | grep -q .; then
+            echo "Vulkan/libplacebo/shaderc dylibs must not be packaged for the OpenGL-only Qt libmpv build." >&2
+            find "$check_dir" \( -name 'libvulkan*.dylib' -o -name 'libplacebo*.dylib' -o -name 'libshaderc*.dylib' \) >&2
+            exit 1
+          fi
+          version_code() {
+            IFS=. read -r major minor patch <<< "$1"
+            major="${major:-0}"
+            minor="${minor:-0}"
+            patch="${patch:-0}"
+            echo "$((10#$major * 10000 + 10#$minor * 100 + 10#$patch))"
+          }
+          target_code="$(version_code "$target")"
+          failed=0
           while IFS= read -r dylib; do
             minos="$(otool -l "$dylib" | awk '/LC_BUILD_VERSION/{found=1} found && /minos/{print $2; exit}')"
             if [[ -z "$minos" ]]; then
               minos="$(otool -l "$dylib" | awk '/LC_VERSION_MIN_MACOSX/{found=1} found && /version/{print $2; exit}')"
             fi
             echo "${dylib#$check_dir/}: minos ${minos:-unknown}"
+            if [[ -n "$minos" && "$(version_code "$minos")" -gt "$target_code" ]]; then
+              echo "${dylib#$check_dir/} was built for macOS ${minos}, above target ${target}" >&2
+              failed=1
+            fi
+            if otool -L "$dylib" | grep -Eq '/opt/homebrew|/usr/local|/Users/runner'; then
+              echo "${dylib#$check_dir/} contains non-relocatable dependency paths" >&2
+              otool -L "$dylib" >&2
+              failed=1
+            fi
+            if otool -L "$dylib" | grep -Fq '/usr/lib/swift/'; then
+              echo "${dylib#$check_dir/} links Swift runtime libraries" >&2
+              otool -L "$dylib" >&2
+              failed=1
+            fi
           done < <(find "$check_dir" -name '*.dylib' -type f | sort)
+          exit "$failed"
 
       - name: Upload packaged artifacts
         uses: actions/upload-artifact@v7
