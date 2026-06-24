@@ -29,21 +29,24 @@ export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS MACOSX_DEPLOYMENT_TARGET
 
 MPV_INSTALL_PREFIX="${HOME}/out/mpv"
 MPV_VARIANT="${TRAVIS_OS_NAME:-local}"
-BREW_PREFIX="$(brew --prefix)"
-PKG_CONFIG_PATHS=()
 
-for formula in \
-  ffmpeg freetype fribidi harfbuzz jpeg-turbo lcms2 libarchive libass \
-  luajit mujs rubberband uchardet zimg
-do
-  formula_prefix="$(brew --prefix "$formula" 2>/dev/null || true)"
-  [[ -n "$formula_prefix" ]] || continue
-  [[ -d "${formula_prefix}/lib/pkgconfig" ]] && PKG_CONFIG_PATHS+=("${formula_prefix}/lib/pkgconfig")
-  [[ -d "${formula_prefix}/share/pkgconfig" ]] && PKG_CONFIG_PATHS+=("${formula_prefix}/share/pkgconfig")
-done
+if [[ "${MPV_DEPS_PROVIDER:-nix}" == "brew" ]]; then
+  BREW_PREFIX="$(brew --prefix)"
+  PKG_CONFIG_PATHS=()
 
-export PKG_CONFIG_PATH="$(IFS=:; printf '%s' "${PKG_CONFIG_PATHS[*]}")"
-export PATH="${BREW_PREFIX}/bin:${PATH}"
+  for formula in \
+    ffmpeg freetype fribidi harfbuzz jpeg-turbo lcms2 libarchive libass \
+    luajit mujs rubberband uchardet zimg
+  do
+    formula_prefix="$(brew --prefix "$formula" 2>/dev/null || true)"
+    [[ -n "$formula_prefix" ]] || continue
+    [[ -d "${formula_prefix}/lib/pkgconfig" ]] && PKG_CONFIG_PATHS+=("${formula_prefix}/lib/pkgconfig")
+    [[ -d "${formula_prefix}/share/pkgconfig" ]] && PKG_CONFIG_PATHS+=("${formula_prefix}/share/pkgconfig")
+  done
+
+  export PKG_CONFIG_PATH="$(IFS=:; printf '%s' "${PKG_CONFIG_PATHS[*]}")"
+  export PATH="${BREW_PREFIX}/bin:${PATH}"
+fi
 
 filtered_common_args=()
 read -r -a common_args_words <<< "$common_args"

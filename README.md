@@ -1,6 +1,6 @@
 # macOS Qt libmpv Build Workflow
 
-This repository builds macOS `libmpv` directly from upstream `mpv-player/mpv` using the official macOS CI dependency setup, with a Qt-oriented macOS build profile for `libmpv` consumers.
+This repository builds macOS `libmpv` directly from upstream `mpv-player/mpv` using a Nix-provided dependency shell, with a Qt/OpenGL-oriented macOS build profile for `libmpv` consumers.
 
 Each run builds two architectures:
 
@@ -52,11 +52,12 @@ The tag must match a valid upstream `mpv-player/mpv` ref such as `v0.41.0`.
 Each matrix job:
 
 1. checks out this packaging repository
-2. checks out upstream `mpv-player/mpv`
-3. installs Homebrew build tools
-4. builds runtime dependencies from source with `MACOSX_DEPLOYMENT_TARGET=11.0`
-5. runs a Qt/libmpv-oriented OpenGL build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, Vulkan/libplacebo, and macOS Swift UI features disabled while keeping VideoToolbox OpenGL support
-6. packages `libmpv` from `$HOME/out/mpv`
+2. resolves the requested upstream mpv ref
+3. checks out upstream `mpv-player/mpv`
+4. installs Nix
+5. enters this repository's Nix dependency shell
+6. runs a Qt/libmpv-oriented OpenGL build script based on upstream `ci/build-macos.sh`, with mpv CLI/player app, tests, Vulkan/libplacebo, and macOS Swift UI features disabled while keeping VideoToolbox OpenGL support
+7. packages `libmpv` from `$HOME/out/mpv`
 
 The release job downloads both architecture artifacts and uploads the generated `libmpv` `.tar.gz` files to the GitHub Release.
 
@@ -71,19 +72,14 @@ Manual runs can override the upstream ref with the `mpv_ref` input.
 
 ## Local usage
 
-Install the same build tools used by this workflow, build runtime dependencies from source, clone upstream `mpv`, and run the Qt/libmpv macOS build script:
+Install Nix, clone upstream `mpv`, and run the Qt/libmpv macOS build script inside this repository's dependency shell:
 
 ```bash
-brew update
-brew install autoconf automake cmake nasm pkgconf libtool python meson ninja rust
-
-MACOSX_DEPLOYMENT_TARGET=11.0 \
-  /path/to/this/repo/scripts/build_macos_libmpv_deps.sh --arch arm64 --target 11.0
-
 git clone https://github.com/mpv-player/mpv.git
 cd mpv
-MACOSX_DEPLOYMENT_TARGET=11.0 TRAVIS_OS_NAME=local \
-  /path/to/this/repo/scripts/build_macos_libmpv_qt.sh "$PWD"
+MACOSX_DEPLOYMENT_TARGET=11.0 TRAVIS_OS_NAME=local MPV_DEPS_PROVIDER=nix \
+  nix develop /path/to/this/repo#libmpv-macos -c \
+  bash /path/to/this/repo/scripts/build_macos_libmpv_qt.sh "$PWD"
 ```
 
 To package `libmpv` from the official install prefix:

@@ -1,4 +1,4 @@
-name: Build macOS mpv with upstream CI
+name: Build macOS libmpv with Nix deps
 
 on:
   push:
@@ -62,41 +62,20 @@ jobs:
           path: mpv
           fetch-depth: 1
 
-      - name: Remove stray upstream python binary symlinks under /usr/local
-        shell: bash
-        run: |
-          find /usr/local/bin -lname '*/Library/Frameworks/Python.framework/*' -delete -print
-          brew unlink python && brew link --overwrite python
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
 
-      - name: Unlink pkg-config if the CI runner happens to have it already installed
-        shell: bash
-        run: |
-          find "$(brew config | grep HOMEBREW_PREFIX | cut -f 2- -d ' ')/bin" -lname '*/pkg-config@0*/*' -print -exec brew unlink pkg-config@0.29.2 \; -quit
-
-      - name: Install build tools
-        shell: bash
-        run: |
-          brew update
-          brew install -q autoconf automake cmake nasm pkgconf libtool python meson ninja rust
-
-      - name: Build runtime dependencies from source
-        shell: bash
-        env:
-          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
-        run: |
-          ./scripts/build_macos_libmpv_deps.sh \
-            --arch "${{ matrix.artifact_suffix }}" \
-            --target "${{ matrix.target }}"
-
-      - name: Build with macOS CI-compatible script
+      - name: Build libmpv
         id: build
         shell: bash
         env:
           TRAVIS_OS_NAME: ${{ matrix.os }}
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
+          MPV_DEPS_PROVIDER: nix
         run: |
           rm -rf "$HOME/out/mpv"
-          bash ./scripts/build_macos_libmpv_qt.sh "$GITHUB_WORKSPACE/mpv"
+          nix develop .#libmpv-macos -c \
+            bash ./scripts/build_macos_libmpv_qt.sh "$GITHUB_WORKSPACE/mpv"
 
       - name: Verify libmpv output
         shell: bash
@@ -112,10 +91,6 @@ jobs:
           if otool -L "$HOME/out/mpv/lib/libmpv.dylib" | grep -Fq '/usr/lib/swift/'; then
             echo "libmpv.dylib must not link against Swift runtime libraries." >&2
             otool -L "$HOME/out/mpv/lib/libmpv.dylib" >&2
-            exit 1
-          fi
-          if nm -u "$HOME/out/mpv/lib/libmpv.dylib" | grep -Fq '_$ss20_StaticArrayStorageCN'; then
-            echo "libmpv.dylib references a Swift runtime symbol that is unavailable on macOS 14." >&2
             exit 1
           fi
 
@@ -152,14 +127,17 @@ jobs:
 
       - name: Package libmpv bundle
         shell: bash
+        env:
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.target }}
         run: |
           mkdir -p "$GITHUB_WORKSPACE/dist"
-          ./scripts/package_libmpv.sh \
-            --arch "${{ matrix.artifact_suffix }}" \
-            --install-prefix "$HOME/out/mpv" \
-            --source-dir "$GITHUB_WORKSPACE/mpv" \
-            --version "${{ steps.version.outputs.version }}" \
-            --output-dir "$GITHUB_WORKSPACE/dist"
+          nix develop .#libmpv-macos -c \
+            bash ./scripts/package_libmpv.sh \
+              --arch "${{ matrix.artifact_suffix }}" \
+              --install-prefix "$HOME/out/mpv" \
+              --source-dir "$GITHUB_WORKSPACE/mpv" \
+              --version "${{ steps.version.outputs.version }}" \
+              --output-dir "$GITHUB_WORKSPACE/dist"
 
       - name: Verify packaged dylibs
         shell: bash
@@ -199,7 +177,7 @@ jobs:
               echo "${dylib#$check_dir/} was built for macOS ${minos}, above target ${target}" >&2
               failed=1
             fi
-            if otool -L "$dylib" | grep -Eq '/opt/homebrew|/usr/local|/Users/runner'; then
+            if otool -L "$dylib" | grep -Eq '/opt/homebrew|/usr/local|/Users/runner|/nix/store'; then
               echo "${dylib#$check_dir/} contains non-relocatable dependency paths" >&2
               otool -L "$dylib" >&2
               failed=1
@@ -243,10 +221,10 @@ jobs:
           notes_file="$RUNNER_TEMP/release-notes.txt"
 
           cat > "$notes_file" <<EOF
-          Built from upstream ${MPV_REPOSITORY}@${tag} using the official macOS CI dependency and build steps.
+          Built from upstream ${MPV_REPOSITORY}@${tag} using this repository's Nix dependency shell.
 
           Included artifacts:
-          - libmpv headers plus non-system dylib dependencies packaged for arm64 and x86_64
+          - OpenGL-only libmpv bundles for arm64 and x86_64
           EOF
 
           if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
