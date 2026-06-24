@@ -35,6 +35,7 @@ fi
 
 meson_args=(
   -Dprefix="${MPV_INSTALL_PREFIX}"
+  -Dwerror=false
   -Dobjc_args="-Wno-error=deprecated -Wno-error=deprecated-declarations"
   -Dgl=enabled
   -Diconv=enabled
