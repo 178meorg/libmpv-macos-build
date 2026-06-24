@@ -10,7 +10,7 @@ let
 
   callPackage = path: args:
     pkgs.callPackage path ({
-      inherit pkgs darwinTargetedPackage macosDeploymentTarget;
+      inherit pkgs darwinTargetedPackage;
     } // args);
 in
 {
@@ -38,7 +38,9 @@ in
   pcre2 = callPackage ./pcre2 { };
   rubberband = callPackage ./rubberband { };
   shaderc = callPackage ./shaderc { };
-  uchardet = callPackage ./uchardet { };
+  uchardet = callPackage ./uchardet {
+    inherit macosDeploymentTarget;
+  };
   vulkan-headers = callPackage ./vulkan-headers { };
   vulkan-loader = callPackage ./vulkan-loader { };
   xz = callPackage ./xz { };
