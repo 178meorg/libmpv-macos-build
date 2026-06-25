@@ -27,6 +27,11 @@ darwinTargetedPackage (base.overrideAttrs (_old: {
     inherit (packageLock) url sha256;
   };
 
+  outputs = [
+    "out"
+    "dev"
+  ];
+
   mesonFlags = [
     (pkgs.lib.mesonEnable "cairo" false)
     (pkgs.lib.mesonEnable "chafa" false)
