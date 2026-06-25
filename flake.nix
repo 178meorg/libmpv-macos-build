@@ -69,6 +69,7 @@
 
             shellHook = ''
               export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"
+              export PKG_CONFIG_PATH="${localPackages.ffmpeg}/lib/pkgconfig:${localPackages.ffmpeg}/share/pkgconfig''${PKG_CONFIG_PATH:+:''${PKG_CONFIG_PATH}}"
             '';
           };
       });
