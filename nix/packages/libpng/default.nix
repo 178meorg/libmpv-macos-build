@@ -9,6 +9,7 @@
 let
   packageLock = (import ../../../packages.lock.nix).libpng;
   base = pkgs.libpng.override {
+    apngSupport = false;
     inherit zlib;
   };
 in
@@ -20,6 +21,4 @@ darwinTargetedPackage (base.overrideAttrs (_old: {
   src = fetchurl {
     inherit (packageLock) url sha256;
   };
-
-  patches = [ ];
 }))
