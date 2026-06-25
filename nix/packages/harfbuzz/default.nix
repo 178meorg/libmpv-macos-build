@@ -37,6 +37,6 @@ darwinTargetedPackage (base.overrideAttrs (_old: {
     (pkgs.lib.mesonEnable "tests" false)
     (pkgs.lib.mesonEnable "docs" false)
     (pkgs.lib.mesonEnable "utilities" false)
-    (pkgs.lib.mesonOption "cmakepackagedir" "${pkgs.placeholder "dev"}/lib/cmake")
+    (pkgs.lib.mesonOption "cmakepackagedir" "${placeholder "dev"}/lib/cmake")
   ];
 }))
