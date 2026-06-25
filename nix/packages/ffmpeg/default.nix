@@ -2,8 +2,6 @@
   lib,
   stdenv,
   fetchurl,
-  meson,
-  ninja,
   pkg-config,
   nasm,
   yasm,
@@ -31,8 +29,6 @@ stdenv.mkDerivation {
   };
 
   nativeBuildInputs = [
-    meson
-    ninja
     pkg-config
     nasm
     yasm
@@ -53,15 +49,67 @@ stdenv.mkDerivation {
   ]);
 
   postPatch = ''
-    cp ${./meson.build} meson.build
-    cp ${./meson.options} meson.options
     patchShebangs configure
   '';
 
-  mesonFlags = [
-    "-Dvariant=video"
-    "-Dflavor=full"
-  ];
+  configurePhase = ''
+    runHook preConfigure
+
+    configure_flags=(
+      --prefix="$out"
+      --disable-autodetect
+      --disable-all
+      --disable-x86asm
+      --disable-runtime-cpudetect
+      --disable-debug
+      --disable-stripping
+      --disable-optimizations
+      --disable-static
+      --disable-shared
+      --disable-pthreads
+      --disable-safe-bitstream-reader
+      --enable-small
+      --enable-optimizations
+      --enable-shared
+      --enable-network
+      --enable-pthreads
+      --enable-pic
+      --enable-mbedtls
+      --enable-version3
+      --enable-safe-bitstream-reader
+      --enable-stripping
+      --enable-avcodec
+      --enable-avformat
+      --enable-swresample
+      --enable-swscale
+      --enable-avfilter
+      --enable-zlib
+      --enable-audiotoolbox
+      --enable-libxml2
+      --enable-videotoolbox
+      --enable-libdav1d
+      --enable-decoders
+      --enable-hwaccels
+      --enable-parsers
+      --enable-demuxers
+      --enable-protocols
+      --enable-bsfs
+      --enable-filter=overlay
+      --enable-filter=equalizer
+      --disable-decoder=h264
+      --enable-decoder=h264
+    )
+
+    if [[ "${stdenv.hostPlatform.parsed.cpu.name}" == "aarch64" ]]; then
+      configure_flags+=(--enable-neon)
+    fi
+
+    ./configure "''${configure_flags[@]}"
+
+    runHook postConfigure
+  '';
+
+  enableParallelBuilding = true;
 
   postInstall = ''
     pkgconfig_dir="$out/lib/pkgconfig"
