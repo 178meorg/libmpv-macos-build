@@ -24,8 +24,36 @@
               inherit pkgs;
               macosDeploymentTarget = "11.0";
             };
+            pkgConfigPackages = with localPackages; [
+              dav1d
+              ffmpeg
+              freetype
+              fribidi
+              harfbuzz
+              lcms2
+              libarchive
+              libass
+              libpng
+              libplacebo
+              libsamplerate
+              libunibreak
+              libxml2
+              mbedtls
+              mujs
+              rubberband
+              uchardet
+              zimg
+              zlib
+              zstd
+            ];
+            pkgConfigPath = pkgs.lib.concatStringsSep ":" [
+              (pkgs.lib.makeSearchPath "lib/pkgconfig" pkgConfigPackages)
+              (pkgs.lib.makeSearchPath "share/pkgconfig" pkgConfigPackages)
+            ];
           in
           pkgs.mkShell {
+            PKG_CONFIG_PATH = pkgConfigPath;
+
             packages = with pkgs; [
               autoconf
               automake
@@ -69,7 +97,7 @@
 
             shellHook = ''
               export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"
-              export PKG_CONFIG_PATH="${localPackages.ffmpeg}/lib/pkgconfig:${localPackages.ffmpeg}/share/pkgconfig''${PKG_CONFIG_PATH:+:''${PKG_CONFIG_PATH}}"
+              export PKG_CONFIG_PATH="${pkgConfigPath}''${PKG_CONFIG_PATH:+:''${PKG_CONFIG_PATH}}"
             '';
           };
       });
