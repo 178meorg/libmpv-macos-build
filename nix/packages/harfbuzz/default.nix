@@ -26,4 +26,17 @@ darwinTargetedPackage (base.overrideAttrs (_old: {
   src = fetchurl {
     inherit (packageLock) url sha256;
   };
+
+  mesonFlags = [
+    (pkgs.lib.mesonEnable "cairo" false)
+    (pkgs.lib.mesonEnable "chafa" false)
+    (pkgs.lib.mesonEnable "coretext" false)
+    (pkgs.lib.mesonEnable "gpu" false)
+    (pkgs.lib.mesonEnable "gpu_demo" false)
+    (pkgs.lib.mesonEnable "introspection" false)
+    (pkgs.lib.mesonEnable "tests" false)
+    (pkgs.lib.mesonEnable "docs" false)
+    (pkgs.lib.mesonEnable "utilities" false)
+    (pkgs.lib.mesonOption "cmakepackagedir" "${pkgs.placeholder "dev"}/lib/cmake")
+  ];
 }))
