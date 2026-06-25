@@ -63,5 +63,31 @@ stdenv.mkDerivation {
     "-Dflavor=full"
   ];
 
+  postInstall = ''
+    pkgconfig_dir="$out/lib/pkgconfig"
+    mkdir -p "$pkgconfig_dir"
+
+    for pc in \
+      libavcodec \
+      libavfilter \
+      libavformat \
+      libavutil \
+      libswresample \
+      libswscale
+    do
+      if [[ ! -f "$pkgconfig_dir/$pc.pc" ]]; then
+        generated_pc="$(find . -name "$pc.pc" -type f -print -quit)"
+        if [[ -n "$generated_pc" ]]; then
+          install -Dm644 "$generated_pc" "$pkgconfig_dir/$pc.pc"
+        fi
+      fi
+
+      if [[ ! -f "$pkgconfig_dir/$pc.pc" ]]; then
+        echo "Missing FFmpeg pkg-config file: $pc.pc" >&2
+        exit 1
+      fi
+    done
+  '';
+
   MACOSX_DEPLOYMENT_TARGET = macosDeploymentTarget;
 }
