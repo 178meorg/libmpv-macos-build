@@ -30,6 +30,8 @@ darwinTargetedPackage (base.overrideAttrs (_old: {
     (pkgs.lib.mesonEnable "shaderc" false)
     (pkgs.lib.mesonEnable "opengl" true)
     (pkgs.lib.mesonEnable "lcms" true)
+    (pkgs.lib.mesonEnable "dovi" false)
+    (pkgs.lib.mesonEnable "libdovi" false)
   ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
     (pkgs.lib.mesonEnable "unwind" false)
   ];
