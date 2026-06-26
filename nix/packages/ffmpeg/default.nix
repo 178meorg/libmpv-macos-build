@@ -55,8 +55,23 @@ stdenv.mkDerivation {
   configurePhase = ''
     runHook preConfigure
 
+    : "''${CC:=cc}"
+    : "''${CXX:=c++}"
+    : "''${AR:=ar}"
+    : "''${NM:=nm}"
+    : "''${RANLIB:=ranlib}"
+    : "''${STRIP:=strip}"
+
     configure_flags=(
       --prefix="$out"
+      --cc="$CC"
+      --cxx="$CXX"
+      --host-cc="$CC"
+      --ld="$CC"
+      --ar="$AR"
+      --nm="$NM"
+      --ranlib="$RANLIB"
+      --strip="$STRIP"
       --disable-autodetect
       --disable-all
       --disable-x86asm
@@ -100,11 +115,24 @@ stdenv.mkDerivation {
       --enable-decoder=h264
     )
 
+    ${lib.optionalString stdenv.isDarwin ''
+      configure_flags+=(
+        --target-os=darwin
+        --arch=${stdenv.hostPlatform.parsed.cpu.name}
+      )
+    ''}
+
     if [[ "${stdenv.hostPlatform.parsed.cpu.name}" == "aarch64" ]]; then
       configure_flags+=(--enable-neon)
     fi
 
-    ./configure "''${configure_flags[@]}"
+    ./configure "''${configure_flags[@]}" || {
+      if [[ -f ffbuild/config.log ]]; then
+        echo "FFmpeg configure failed; ffbuild/config.log follows:" >&2
+        cat ffbuild/config.log >&2
+      fi
+      exit 1
+    }
 
     runHook postConfigure
   '';
