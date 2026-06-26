@@ -72,6 +72,8 @@ stdenv.mkDerivation {
       --nm="$NM"
       --ranlib="$RANLIB"
       --strip="$STRIP"
+      # FFmpeg uses x509 and crypto APIs directly from tls_mbedtls.o.
+      --extra-libs="-lmbedtls -lmbedx509 -lmbedcrypto"
       --disable-autodetect
       --disable-all
       --disable-x86asm
