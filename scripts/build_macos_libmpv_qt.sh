@@ -160,8 +160,24 @@ for arg in "${raw_meson_args[@]}"; do
   add_meson_arg "$arg"
 done
 
-CC="${CC:-cc}" CXX="${CXX:-c++}" \
-  meson setup build "${filtered_common_args[@]}" "${meson_args[@]}"
+if [[ "$(uname -s)" == "Darwin" && "${MPV_DEPS_PROVIDER:-nix}" == "nix" ]]; then
+  SDKROOT="${SDKROOT:-$(xcrun --sdk macosx --show-sdk-path)}"
+  CC="${MPV_CC:-$(xcrun --sdk macosx --find clang)}"
+  CXX="${MPV_CXX:-$(xcrun --sdk macosx --find clang++)}"
+  unset NIX_CC NIX_CFLAGS_COMPILE NIX_LDFLAGS NIX_LDFLAGS_BEFORE
+  export SDKROOT
+else
+  CC="${CC:-cc}"
+  CXX="${CXX:-c++}"
+fi
+
+export CC CXX
+
+echo "Using CC=${CC}"
+echo "Using CXX=${CXX}"
+echo "Using SDKROOT=${SDKROOT:-}"
+
+meson setup build "${filtered_common_args[@]}" "${meson_args[@]}"
 
 meson compile -C build -j4
 meson install -C build
