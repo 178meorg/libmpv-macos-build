@@ -8,9 +8,9 @@ source "$SCRIPT_DIR/lib.sh"
 
 src="$(dep_src ffmpeg)"
 build="$(dep_build ffmpeg)"
-arch_options=()
+arch_option=""
 if [[ "$TARGET_ARCH" == "arm64" ]]; then
-  arch_options+=(--enable-neon)
+  arch_option="--enable-neon"
 fi
 
 reset_build_dir "$build"
@@ -49,7 +49,7 @@ pushd "$build" >/dev/null
   --enable-videotoolbox \
   --enable-audiotoolbox \
   --enable-libdav1d \
-  "${arch_options[@]}" \
+  ${arch_option:+"$arch_option"} \
   --install-name-dir='@rpath'
 make $MAKEFLAGS
 make install
