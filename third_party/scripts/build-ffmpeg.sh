@@ -8,6 +8,11 @@ source "$SCRIPT_DIR/lib.sh"
 
 src="$(dep_src ffmpeg)"
 build="$(dep_build ffmpeg)"
+arch_options=()
+if [[ "$TARGET_ARCH" == "arm64" ]]; then
+  arch_options+=(--enable-neon)
+fi
+
 reset_build_dir "$build"
 pushd "$build" >/dev/null
 "$src/configure" \
@@ -20,9 +25,17 @@ pushd "$build" >/dev/null
   --extra-ldflags="$LDFLAGS" \
   --arch="$TARGET_ARCH" \
   --target-os=darwin \
+  --disable-autodetect \
   --enable-shared \
   --disable-static \
   --enable-pic \
+  --enable-small \
+  --enable-optimizations \
+  --enable-network \
+  --enable-pthreads \
+  --enable-safe-bitstream-reader \
+  --disable-debug \
+  --disable-stripping \
   --disable-doc \
   --disable-programs \
   --disable-devices \
@@ -36,6 +49,7 @@ pushd "$build" >/dev/null
   --enable-videotoolbox \
   --enable-audiotoolbox \
   --enable-libdav1d \
+  "${arch_options[@]}" \
   --install-name-dir='@rpath'
 make $MAKEFLAGS
 make install
