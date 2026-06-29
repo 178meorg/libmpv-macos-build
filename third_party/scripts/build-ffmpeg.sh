@@ -29,7 +29,6 @@ pushd "$build" >/dev/null
   --disable-avdevice \
   --disable-encoders \
   --disable-muxers \
-  --disable-postproc \
   --disable-gpl \
   --disable-nonfree \
   --enable-zlib \
