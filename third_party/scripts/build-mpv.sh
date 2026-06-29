@@ -8,6 +8,13 @@ source "$SCRIPT_DIR/lib.sh"
 
 src="$(dep_src mpv)"
 build="$(dep_build mpv)"
+patch_marker="$src/.third-party-patches-applied"
+
+if [[ ! -f "$patch_marker" ]]; then
+  patch -d "$src" -p1 < "$THIRD_PARTY_ROOT/patches/mpv-disable-mac-clipboard.patch"
+  touch "$patch_marker"
+fi
+
 reset_build_dir "$build"
 
 opts=(
