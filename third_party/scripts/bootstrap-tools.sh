@@ -6,6 +6,23 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/lib.sh"
 
+build_configure_tool() {
+  local dep="$1"
+  local exe="$2"
+  local src build
+  src="$(dep_src "$dep")"
+  build="$(dep_build "$dep")"
+  if [[ -x "$TOOLS_PREFIX/bin/$exe" ]]; then
+    return
+  fi
+  reset_build_dir "$build"
+  pushd "$build" >/dev/null
+  "$src/configure" --prefix="$TOOLS_PREFIX"
+  make $MAKEFLAGS
+  make install
+  popd >/dev/null
+}
+
 build_pkgconf() {
   local src build
   src="$(dep_src pkgconf)"
@@ -53,10 +70,17 @@ EOF
   chmod +x "$wrapper"
 }
 
+build_configure_tool m4 m4
+build_configure_tool autoconf autoreconf
+build_configure_tool automake automake
+build_configure_tool libtool libtoolize
 build_pkgconf
 build_ninja
 install_meson
 
+"$TOOLS_PREFIX/bin/m4" --version | head -n 1
+"$TOOLS_PREFIX/bin/autoreconf" --version | head -n 1
+"$TOOLS_PREFIX/bin/automake" --version | head -n 1
 "$TOOLS_PREFIX/bin/pkgconf" --version
 "$TOOLS_PREFIX/bin/ninja" --version
 "$TOOLS_PREFIX/bin/meson" --version
