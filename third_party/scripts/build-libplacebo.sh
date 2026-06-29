@@ -14,6 +14,8 @@ while IFS= read -r opt; do opts+=("$opt"); done < <(meson_option_args "$src" \
   demos=false \
   tests=false \
   vulkan=disabled \
+  opengl=enabled \
+  d3d11=disabled \
   shaderc=disabled \
   glslang=disabled \
   lcms=enabled \
