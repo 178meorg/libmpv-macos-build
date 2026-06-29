@@ -26,6 +26,9 @@ source "$SCRIPT_DIR/lib.sh"
 
 [[ "$BUILD_PROFILE" == "enhanced-lgpl" ]] || die "unsupported profile: $BUILD_PROFILE"
 
+rm -rf "$PREFIX"
+mkdir -p "$PREFIX"
+
 "$SCRIPT_DIR/bootstrap-tools.sh"
 
 build_order=(

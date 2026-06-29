@@ -38,11 +38,56 @@ rm -rf "$stage"
 mkdir -p "$stage" "$out_dir"
 
 mkdir -p "$stage/lib" "$stage/include" "$stage/lib/pkgconfig" "$stage/licenses"
-for item in "$PREFIX"/lib/*.dylib "$PREFIX"/lib/*.a "$PREFIX"/lib/*.tbd; do
-  if [[ -e "$item" || -L "$item" ]]; then
-    cp -P "$item" "$stage/lib/"
+
+resolve_prefix_dylib() {
+  local dep="$1"
+  local base
+  case "$dep" in
+    "$PREFIX"/lib/*.dylib)
+      printf '%s\n' "$dep"
+      ;;
+    @rpath/*.dylib|@loader_path/*.dylib|@loader_path/../lib/*.dylib|@loader_path/../Frameworks/*.dylib)
+      base="$(basename "$dep")"
+      if [[ -e "$PREFIX/lib/$base" || -L "$PREFIX/lib/$base" ]]; then
+        printf '%s\n' "$PREFIX/lib/$base"
+      fi
+      ;;
+  esac
+}
+
+copy_dylib_closure() {
+  local queue=("$PREFIX/lib/libmpv.dylib")
+  if [[ -e "$PREFIX/lib/libmpv.2.dylib" || -L "$PREFIX/lib/libmpv.2.dylib" ]]; then
+    queue+=("$PREFIX/lib/libmpv.2.dylib")
   fi
-done
+
+  local seen="|"
+  local idx=0
+  local dylib dep resolved target
+  while [[ "$idx" -lt "${#queue[@]}" ]]; do
+    dylib="${queue[$idx]}"
+    idx=$((idx + 1))
+    [[ -e "$dylib" || -L "$dylib" ]] || continue
+    case "$seen" in
+      *"|$dylib|"*) continue ;;
+    esac
+    seen="$seen$dylib|"
+
+    cp -P "$dylib" "$stage/lib/"
+    if [[ -L "$dylib" ]]; then
+      target="$(readlink "$dylib")"
+      [[ "$target" = /* ]] || target="$(dirname "$dylib")/$target"
+      queue+=("$target")
+    fi
+
+    while IFS= read -r dep; do
+      resolved="$(resolve_prefix_dylib "$dep")"
+      [[ -n "$resolved" ]] && queue+=("$resolved")
+    done < <(otool -L "$dylib" | tail -n +2 | awk '{print $1}')
+  done
+}
+
+copy_dylib_closure
 if [[ -d "$PREFIX/include" ]]; then
   cp -R "$PREFIX/include/." "$stage/include/"
 fi
