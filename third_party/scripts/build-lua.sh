@@ -7,25 +7,31 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
 source "$SCRIPT_DIR/lib.sh"
 
 src="$(dep_src lua)"
+build="$(dep_build lua)"
 version="$(dep_var lua VERSION)"
 major_minor="${version%.*}"
 lua_cflags="-arch $TARGET_ARCH -isysroot $SDKROOT -mmacosx-version-min=$DEPLOYMENT_TARGET -O2 -fPIC -DLUA_USE_MACOSX"
-lua_ldflags="-arch $TARGET_ARCH -isysroot $SDKROOT -mmacosx-version-min=$DEPLOYMENT_TARGET -L$PREFIX/lib"
 
-pushd "$src" >/dev/null
-env -u CFLAGS -u CPPFLAGS -u CXXFLAGS -u LDFLAGS make clean >/dev/null 2>&1 || true
-env -u CFLAGS -u CPPFLAGS -u CXXFLAGS -u LDFLAGS make generic \
-  CC="$CC" \
-  AR="$AR rcu" \
-  RANLIB="$RANLIB" \
-  MYCFLAGS="$lua_cflags" \
-  MYLDFLAGS="$lua_ldflags" \
-  MYLIBS="-lm"
+reset_build_dir "$build"
+lua_sources=(
+  lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c
+  lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c
+  ltm.c lundump.c lvm.c lzio.c
+  lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c
+  loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c
+)
 
-mkdir -p "$PREFIX/include/lua$major_minor" "$PREFIX/lib/pkgconfig" "$PREFIX/bin" "$PREFIX/lib"
-cp src/lua src/luac "$PREFIX/bin/"
-cp src/liblua.a "$PREFIX/lib/liblua.a"
-cp src/lua.h src/luaconf.h src/lauxlib.h src/lualib.h "$PREFIX/include/lua$major_minor/"
+objects=()
+for c_file in "${lua_sources[@]}"; do
+  obj="$build/${c_file%.c}.o"
+  "$CC" $lua_cflags -I"$src/src" -c "$src/src/$c_file" -o "$obj"
+  objects+=("$obj")
+done
+
+mkdir -p "$PREFIX/include/lua$major_minor" "$PREFIX/lib/pkgconfig" "$PREFIX/lib"
+"$AR" rcs "$PREFIX/lib/liblua.a" "${objects[@]}"
+"$RANLIB" "$PREFIX/lib/liblua.a"
+cp "$src/src/lua.h" "$src/src/luaconf.h" "$src/src/lauxlib.h" "$src/src/lualib.h" "$PREFIX/include/lua$major_minor/"
 cat > "$PREFIX/lib/pkgconfig/lua.pc" <<EOF
 prefix=$PREFIX
 exec_prefix=\${prefix}
@@ -40,4 +46,3 @@ Libs.private: -lm
 Cflags: -I\${includedir}
 EOF
 ln -sf lua.pc "$PREFIX/lib/pkgconfig/lua$major_minor.pc"
-popd >/dev/null

@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.0
 
       - name: Resolve mpv ref
         id: ref
@@ -51,7 +51,7 @@ jobs:
 
       - name: Cache source archives
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.skip_cache == false }}
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: third_party/src/archives
           key: src-${{ hashFiles('third_party/manifest/deps.env') }}
@@ -103,7 +103,7 @@ jobs:
           third_party/scripts/audit-forbidden-paths.sh "$check_dir"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: libmpv-macos-${{ matrix.arch }}
           path: dist/libmpv-*.tar.gz
@@ -117,7 +117,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           pattern: libmpv-macos-*
           merge-multiple: true
