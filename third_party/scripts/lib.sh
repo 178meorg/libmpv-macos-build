@@ -112,6 +112,7 @@ cmake_setup() {
     -DCMAKE_OSX_DEPLOYMENT_TARGET="$DEPLOYMENT_TARGET" \
     -DCMAKE_OSX_SYSROOT="$SDKROOT" \
     -DCMAKE_PREFIX_PATH="$PREFIX" \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
     -DCMAKE_INSTALL_RPATH="@loader_path;@loader_path/../lib;@loader_path/../Frameworks" \
     "$@"
 }
