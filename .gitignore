@@ -1,0 +1,8 @@
+dist/
+third_party/build/
+third_party/install/
+third_party/src/archives/
+third_party/src/extracted/
+third_party/tools/
+third_party/logs/
+*.log
