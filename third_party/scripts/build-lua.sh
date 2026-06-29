@@ -13,13 +13,29 @@ major_minor="${version%.*}"
 lua_cflags="-arch $TARGET_ARCH -isysroot $SDKROOT -mmacosx-version-min=$DEPLOYMENT_TARGET -O2 -fPIC -DLUA_USE_MACOSX"
 
 reset_build_dir "$build"
-lua_sources=(
-  lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c
-  lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c
-  ltm.c lundump.c lvm.c lzio.c
-  lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c
-  loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c
-)
+case "$major_minor" in
+  5.2)
+    lua_sources=(
+      lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c
+      lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c
+      ltm.c lundump.c lvm.c lzio.c
+      lauxlib.c lbaselib.c lbitlib.c lcorolib.c ldblib.c liolib.c lmathlib.c
+      loadlib.c loslib.c lstrlib.c ltablib.c linit.c
+    )
+    ;;
+  5.4)
+    lua_sources=(
+      lapi.c lcode.c lctype.c ldebug.c ldo.c ldump.c lfunc.c lgc.c llex.c
+      lmem.c lobject.c lopcodes.c lparser.c lstate.c lstring.c ltable.c
+      ltm.c lundump.c lvm.c lzio.c
+      lauxlib.c lbaselib.c lcorolib.c ldblib.c liolib.c lmathlib.c loadlib.c
+      loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c
+    )
+    ;;
+  *)
+    die "unsupported Lua version for manual build: $version"
+    ;;
+esac
 
 objects=()
 for c_file in "${lua_sources[@]}"; do
