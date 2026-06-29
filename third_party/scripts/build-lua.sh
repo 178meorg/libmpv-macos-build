@@ -9,15 +9,18 @@ source "$SCRIPT_DIR/lib.sh"
 src="$(dep_src lua)"
 version="$(dep_var lua VERSION)"
 major_minor="${version%.*}"
+lua_cflags="-arch $TARGET_ARCH -isysroot $SDKROOT -mmacosx-version-min=$DEPLOYMENT_TARGET -O2 -fPIC -DLUA_USE_MACOSX"
+lua_ldflags="-arch $TARGET_ARCH -isysroot $SDKROOT -mmacosx-version-min=$DEPLOYMENT_TARGET -L$PREFIX/lib"
 
 pushd "$src" >/dev/null
-make clean >/dev/null 2>&1 || true
-make macosx \
+env -u CFLAGS -u CPPFLAGS -u CXXFLAGS -u LDFLAGS make clean >/dev/null 2>&1 || true
+env -u CFLAGS -u CPPFLAGS -u CXXFLAGS -u LDFLAGS make generic \
   CC="$CC" \
   AR="$AR rcu" \
   RANLIB="$RANLIB" \
-  MYCFLAGS="$CFLAGS -DLUA_USE_MACOSX" \
-  MYLDFLAGS="$LDFLAGS"
+  MYCFLAGS="$lua_cflags" \
+  MYLDFLAGS="$lua_ldflags" \
+  MYLIBS="-lm"
 
 mkdir -p "$PREFIX/include/lua$major_minor" "$PREFIX/lib/pkgconfig" "$PREFIX/bin" "$PREFIX/lib"
 cp src/lua src/luac "$PREFIX/bin/"
