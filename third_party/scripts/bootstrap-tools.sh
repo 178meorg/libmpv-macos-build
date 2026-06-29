@@ -74,6 +74,7 @@ build_configure_tool m4 m4
 build_configure_tool autoconf autoreconf
 build_configure_tool automake automake
 build_configure_tool libtool libtoolize
+build_configure_tool nasm nasm
 build_pkgconf
 build_ninja
 install_meson
@@ -81,6 +82,7 @@ install_meson
 "$TOOLS_PREFIX/bin/m4" --version | head -n 1
 "$TOOLS_PREFIX/bin/autoreconf" --version | head -n 1
 "$TOOLS_PREFIX/bin/automake" --version | head -n 1
+"$TOOLS_PREFIX/bin/nasm" --version
 "$TOOLS_PREFIX/bin/pkgconf" --version
 "$TOOLS_PREFIX/bin/ninja" --version
 "$TOOLS_PREFIX/bin/meson" --version
