@@ -44,6 +44,7 @@ build_order=(
   lua
   libarchive
   libplacebo
+  libxml2
   ffmpeg
   mpv
 )

@@ -49,6 +49,7 @@ pushd "$build" >/dev/null
   --enable-videotoolbox \
   --enable-audiotoolbox \
   --enable-libdav1d \
+  --enable-libxml2 \
   ${arch_option:+"$arch_option"} \
   --install-name-dir='@rpath'
 make $MAKEFLAGS

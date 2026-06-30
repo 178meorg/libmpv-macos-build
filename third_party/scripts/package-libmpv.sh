@@ -115,6 +115,7 @@ cat > "$stage/build-info.json" <<EOF
     "ffmpeg": "$FFMPEG_VERSION",
     "libplacebo": "$LIBPLACEBO_VERSION",
     "libass": "$LIBASS_VERSION",
+    "libxml2": "$LIBXML2_VERSION",
     "freetype": "$FREETYPE_VERSION",
     "harfbuzz": "$HARFBUZZ_VERSION",
     "fribidi": "$FRIBIDI_VERSION",
