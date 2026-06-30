@@ -29,7 +29,6 @@ pushd "$build" >/dev/null
   --enable-shared \
   --disable-static \
   --enable-pic \
-  --enable-small \
   --enable-optimizations \
   --enable-network \
   --enable-pthreads \
