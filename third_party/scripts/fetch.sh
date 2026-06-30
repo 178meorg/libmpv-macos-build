@@ -22,19 +22,29 @@ require_cmd tar
 
 download_dep() {
   local dep="$1"
-  local url archive sha
+  local urls url archive sha
   if [[ -n "$(dep_var "$dep" GIT_URL)" ]]; then
     return
   fi
-  url="$(dep_var "$dep" URL)"
+  urls="$(dep_var "$dep" URLS)"
+  if [[ -z "$urls" ]]; then
+    urls="$(dep_var "$dep" URL)"
+  fi
   sha="$(dep_var "$dep" SHA256)"
   archive="$(dep_archive "$dep")"
-  [[ -n "$url" ]] || die "$dep has no URL"
+  [[ -n "$urls" ]] || die "$dep has no URL"
 
   if [[ ! -f "$archive" ]]; then
     log "download $dep"
-    curl -fL --retry 3 --connect-timeout 30 -o "$archive.tmp" "$url"
-    mv "$archive.tmp" "$archive"
+    for url in $urls; do
+      rm -f "$archive.tmp"
+      if curl -fL --retry 2 --connect-timeout 15 --max-time 60 -o "$archive.tmp" "$url"; then
+        mv "$archive.tmp" "$archive"
+        break
+      fi
+      log "download failed for $dep from $url"
+    done
+    [[ -f "$archive" ]] || die "failed to download $dep"
   fi
 
   if [[ -z "$sha" || "$sha" == "SKIP" ]]; then

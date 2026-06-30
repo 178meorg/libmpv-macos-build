@@ -16,6 +16,11 @@ build_configure_tool() {
     return
   fi
   reset_build_dir "$build"
+  if [[ ! -x "$src/configure" && -x "$src/autogen.sh" ]]; then
+    pushd "$src" >/dev/null
+    ./autogen.sh
+    popd >/dev/null
+  fi
   pushd "$build" >/dev/null
   "$src/configure" --prefix="$TOOLS_PREFIX"
   make $MAKEFLAGS
