@@ -9,6 +9,7 @@ source "$SCRIPT_DIR/lib.sh"
 build_configure_tool() {
   local dep="$1"
   local exe="$2"
+  local build_mode="${3:-out-of-tree}"
   local src build
   src="$(dep_src "$dep")"
   build="$(dep_build "$dep")"
@@ -21,8 +22,15 @@ build_configure_tool() {
     ./autogen.sh
     popd >/dev/null
   fi
+  if [[ "$build_mode" == "in-source" ]]; then
+    build="$src"
+  fi
   pushd "$build" >/dev/null
-  "$src/configure" --prefix="$TOOLS_PREFIX"
+  if [[ "$build_mode" == "in-source" ]]; then
+    ./configure --prefix="$TOOLS_PREFIX"
+  else
+    "$src/configure" --prefix="$TOOLS_PREFIX"
+  fi
   make $MAKEFLAGS
   make install
   popd >/dev/null
@@ -79,7 +87,7 @@ build_configure_tool m4 m4
 build_configure_tool autoconf autoreconf
 build_configure_tool automake automake
 build_configure_tool libtool libtoolize
-build_configure_tool nasm nasm
+build_configure_tool nasm nasm in-source
 build_pkgconf
 build_ninja
 install_meson
