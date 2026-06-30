@@ -37,7 +37,7 @@ out_dir="$PROJECT_ROOT/dist"
 rm -rf "$stage"
 mkdir -p "$stage" "$out_dir"
 
-mkdir -p "$stage/lib" "$stage/include" "$stage/lib/pkgconfig" "$stage/licenses"
+mkdir -p "$stage/lib" "$stage/include" "$stage/licenses"
 
 resolve_prefix_dylib() {
   local dep="$1"
@@ -88,11 +88,9 @@ copy_dylib_closure() {
 }
 
 copy_dylib_closure
-if [[ -d "$PREFIX/include" ]]; then
-  cp -R "$PREFIX/include/." "$stage/include/"
-fi
-if [[ -d "$PREFIX/lib/pkgconfig" ]]; then
-  cp -R "$PREFIX/lib/pkgconfig/." "$stage/lib/pkgconfig/"
+if [[ -d "$PREFIX/include/mpv" ]]; then
+  mkdir -p "$stage/include/mpv"
+  cp -R "$PREFIX/include/mpv/." "$stage/include/mpv/"
 fi
 
 for dep in $DEPS; do
@@ -133,9 +131,9 @@ cat > "$stage/README-runtime.md" <<EOF
 This bundle contains a macOS $TARGET_ARCH libmpv runtime/development package
 built for macOS $DEPLOYMENT_TARGET or newer.
 
-Use \`include/\` and \`lib/pkgconfig/mpv.pc\` to link a Qt application. Ship the
-dylibs from \`lib/\` inside your app bundle's \`Contents/Frameworks\` directory
-or another location covered by your executable's rpath.
+Use \`include/mpv/\` to compile a Qt application against libmpv. Ship the dylibs
+from \`lib/\` inside your app bundle's \`Contents/Frameworks\` directory or
+another location covered by your executable's rpath.
 EOF
 
 tar -C "$THIRD_PARTY_ROOT/build/package" -czf "$out_dir/$pkg_name.tar.gz" "$pkg_name"
