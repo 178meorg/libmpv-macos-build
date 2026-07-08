@@ -67,6 +67,7 @@ jobs:
         shell: bash
         env:
           MPV_REF: ${{ steps.ref.outputs.mpv_ref }}
+          MPV_SOURCE_REF: master
         run: third_party/scripts/fetch.sh
 
       - name: Build libmpv dependency stack

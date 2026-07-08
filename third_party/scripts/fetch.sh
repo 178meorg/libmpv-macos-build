@@ -60,21 +60,26 @@ download_dep() {
 extract_dep() {
   local dep="$1"
   local archive src marker
-  local git_url git_ref
+  local git_url git_ref clone_ref
   git_url="$(dep_var "$dep" GIT_URL)"
   if [[ -n "$git_url" ]]; then
     git_ref="$(dep_var "$dep" REF)"
     [[ -n "$git_ref" ]] || die "$dep has GIT_URL but no REF"
+    clone_ref="$git_ref"
+    if [[ "$dep" == "mpv" ]]; then
+      clone_ref="$(dep_var "$dep" SOURCE_REF)"
+      [[ -n "$clone_ref" ]] || clone_ref="master"
+    fi
     src="$(dep_src "$dep")"
     marker="$src/.git-fetch-ref"
-    if [[ -d "$src/.git" && -f "$marker" && "$(cat "$marker")" == "$git_ref" ]]; then
+    if [[ -d "$src/.git" && -f "$marker" && "$(cat "$marker")" == "$clone_ref" ]]; then
       return
     fi
-    log "clone $dep@$git_ref"
+    log "clone $dep@$clone_ref"
     rm -rf "$src"
-    git clone --branch "$git_ref" --depth 1 "$git_url" "$src"
+    git clone --branch "$clone_ref" --depth 1 "$git_url" "$src"
     git -C "$src" submodule update --init --recursive
-    echo "$git_ref" > "$marker"
+    echo "$clone_ref" > "$marker"
     return
   fi
 
