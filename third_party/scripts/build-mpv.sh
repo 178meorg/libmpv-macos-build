@@ -8,15 +8,6 @@ source "$SCRIPT_DIR/lib.sh"
 
 src="$(dep_src mpv)"
 build="$(dep_build mpv)"
-patch_marker="$src/.third-party-patches-applied"
-patch_version="mpv-disable-mac-clipboard-v3"
-
-if [[ ! -f "$patch_marker" ]]; then
-  patch -d "$src" -p1 < "$THIRD_PARTY_ROOT/patches/mpv-disable-mac-clipboard.patch"
-  echo "$patch_version" > "$patch_marker"
-elif [[ "$(cat "$patch_marker")" != "$patch_version" ]]; then
-  die "mpv source has an obsolete patch marker; remove $src and rerun third_party/scripts/fetch.sh"
-fi
 
 reset_build_dir "$build"
 

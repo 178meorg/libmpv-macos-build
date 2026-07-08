@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       mpv_ref:
-        description: Upstream mpv ref to build
+        description: mpv ref to build
         required: false
-        default: v0.41.0
+        default: master
         type: string
       skip_cache:
         description: Ignore dependency source cache
@@ -20,7 +20,7 @@ permissions:
 
 env:
   MACOSX_DEPLOYMENT_TARGET: "11.0"
-  MPV_DEFAULT_REF: v0.41.0
+  MPV_DEFAULT_REF: master
 
 jobs:
   build-macos:
@@ -45,8 +45,14 @@ jobs:
         shell: bash
         env:
           INPUT_REF: ${{ github.event.inputs.mpv_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          ref="${INPUT_REF:-${MPV_DEFAULT_REF}}"
+          if [[ "$REF_TYPE" == "tag" ]]; then
+            ref="$REF_NAME"
+          else
+            ref="${INPUT_REF:-${MPV_DEFAULT_REF}}"
+          fi
           echo "mpv_ref=${ref}" >> "$GITHUB_OUTPUT"
 
       - name: Cache source archives
@@ -83,6 +89,8 @@ jobs:
 
       - name: Package libmpv bundle
         shell: bash
+        env:
+          MPV_REF: ${{ steps.ref.outputs.mpv_ref }}
         run: |
           third_party/scripts/package-libmpv.sh \
             --arch "${{ matrix.arch }}" \
@@ -141,6 +149,10 @@ jobs:
             echo "- x86_64 libmpv bundle"
           } > "$notes_file"
           if gh release view "$tag" >/dev/null 2>&1; then
+            while IFS= read -r asset; do
+              [[ -n "$asset" ]] || continue
+              gh release delete-asset "$tag" "$asset" --yes
+            done < <(gh release view "$tag" --json assets --jq '.assets[].name | select(startswith("libmpv-") and endswith(".tar.gz"))')
             gh release upload "$tag" dist/libmpv-*.tar.gz --clobber
           else
             gh release create "$tag" dist/libmpv-*.tar.gz \
