@@ -19,7 +19,7 @@ while IFS= read -r opt; do opts+=("$opt"); done < <(meson_option_args "$src" \
   shaderc=disabled \
   glslang=disabled \
   lcms=enabled \
-  dovi=disabled)
+  dovi=enabled)
 meson_setup "$build" "$src" "${opts[@]}"
 "$MESON" compile -C "$build"
 "$MESON" install -C "$build"
